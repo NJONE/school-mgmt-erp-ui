@@ -1,0 +1,48 @@
+:root {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #eaf1ff;
+  --secondary: #64748b;
+  --accent: #7c3aed;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #0ea5e9;
+  --background: #f4f7fb;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-hover: #f1f5f9;
+  --border: #e2e8f0;
+  --text-primary: #172033;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 18px 45px rgba(15, 23, 42, 0.16);
+  color-scheme: light;
+}
+
+:root.dark {
+  --background: #0f172a;
+  --surface: #111c31;
+  --surface-elevated: #17233a;
+  --surface-hover: #1d2a43;
+  --border: #263551;
+  --text-primary: #edf4ff;
+  --text-secondary: #aebdd4;
+  --text-muted: #7f91ac;
+  --primary-soft: #1a3157;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 18px 45px rgba(0, 0, 0, 0.38);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; }
+body {
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--background);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; }
+:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 30%, transparent); outline-offset: 2px; }

@@ -1,0 +1,21 @@
+export const API_ENDPOINTS = {
+  auth: {
+    login: '/auth/login',
+    logout: '/auth/logout',
+    refresh: '/auth/refresh',
+    me: '/auth/me',
+    forgotPassword: '/auth/forgot-password',
+    resetPassword: '/auth/reset-password',
+    changePassword: '/auth/change-password',
+  },
+  schools: '/schools',
+  branches: '/branches',
+  students: '/students',
+  parents: '/parents',
+  staff: '/staff',
+  classes: '/classes',
+  sections: '/sections',
+  subjects: '/subjects',
+  academicSessions: '/academic-sessions',
+  notifications: '/notifications',
+} as const;

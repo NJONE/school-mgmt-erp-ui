@@ -1,0 +1,2180 @@
+# MASTER DEVELOPMENT PROMPT
+# school-mgmt-erp-ui
+
+## PROJECT OVERVIEW
+
+Create a professional, enterprise-grade, commercial School Management ERP frontend named:
+
+**school-mgmt-erp-ui**
+
+This application is designed to serve multiple schools, branches, administrators, teachers, staff, students, and parents through a modern, secure, responsive, multi-tenant SaaS school ERP interface.
+
+The application must be production-oriented, modular, scalable, reusable, maintainable, and designed for commercial deployment.
+
+The frontend must integrate with the existing backend repository:
+
+**school-mgmt-erp-service**
+
+Do not recreate the backend. Do not create mock APIs as the final implementation. Integrate with the actual backend API endpoints and structure the frontend so API configuration can be changed without rewriting components.
+
+---
+
+# 1. TECHNOLOGY STACK
+
+Use the following technologies:
+
+- Angular 22
+- TypeScript with strict mode
+- Standalone components
+- Angular Signals where appropriate
+- Reactive Forms
+- RxJS
+- Angular Router
+- HTTP Client
+- SCSS
+- Angular CDK
+- Material Design components where appropriate
+- Lucide Angular icons
+- Chart.js or ngx-charts for dashboards
+- ngx-translate for internationalization
+- ESLint
+- Prettier
+- Vitest or Angular-compatible testing framework
+
+Do not use outdated Angular architecture patterns.
+
+Use:
+
+- Standalone components
+- Lazy-loaded feature routes
+- Functional route guards
+- Functional HTTP interceptors
+- Typed services
+- Typed forms
+- Reusable components
+- Signals for local and application state
+- RxJS for HTTP and asynchronous operations
+
+Avoid:
+
+- NgModule-based architecture unless required by a third-party library
+- Excessive component nesting
+- Duplicate business logic
+- Direct API calls from UI components
+- Hard-coded API URLs
+- Any TypeScript `any` types
+- Monolithic components
+- Duplicate CRUD implementations for every entity
+
+---
+
+# 2. CORE ARCHITECTURE
+
+Build a modular frontend architecture.
+
+Architecture:
+
+UI Components
+    ↓
+Feature Components
+    ↓
+Reusable CRUD Engine
+    ↓
+Metadata Configuration
+    ↓
+Entity API Services
+    ↓
+HTTP Client
+    ↓
+school-mgmt-erp-service
+
+Metadata controls the presentation and behavior of generic CRUD screens.
+
+The metadata must NOT contain business logic that belongs to the backend.
+
+The backend remains responsible for:
+
+- Authentication
+- Authorization
+- Data validation
+- Business rules
+- Tenant isolation
+- School and branch access
+- Data integrity
+- Database transactions
+- Audit logs
+- Calculations
+- Workflow rules
+
+The frontend is responsible for:
+
+- UI rendering
+- Form generation
+- Field validation for user experience
+- Table rendering
+- Filtering
+- Sorting
+- Pagination
+- Search
+- Dialogs
+- Navigation
+- User interaction
+- API integration
+- Error handling
+
+---
+
+# 3. PROJECT STRUCTURE
+
+Create a clean structure similar to:
+
+src/
+├── app/
+│   ├── core/
+│   │   ├── auth/
+│   │   ├── guards/
+│   │   ├── interceptors/
+│   │   ├── services/
+│   │   ├── models/
+│   │   ├── config/
+│   │   ├── constants/
+│   │   ├── permissions/
+│   │   ├── tenant/
+│   │   └── state/
+│   │
+│   ├── shared/
+│   │   ├── components/
+│   │   │   ├── page-header/
+│   │   │   ├── loading/
+│   │   │   ├── empty-state/
+│   │   │   ├── error-state/
+│   │   │   ├── confirmation-dialog/
+│   │   │   ├── search-box/
+│   │   │   ├── filter-panel/
+│   │   │   ├── status-badge/
+│   │   │   ├── avatar/
+│   │   │   ├── file-upload/
+│   │   │   ├── breadcrumbs/
+│   │   │   ├── notification-center/
+│   │   │   ├── data-table/
+│   │   │   ├── pagination/
+│   │   │   ├── form-field/
+│   │   │   ├── dynamic-form/
+│   │   │   ├── dynamic-filter/
+│   │   │   ├── dynamic-table/
+│   │   │   ├── lookup-select/
+│   │   │   ├── multi-select/
+│   │   │   ├── date-picker/
+│   │   │   ├── rich-text-editor/
+│   │   │   └── export-menu/
+│   │   │
+│   │   ├── directives/
+│   │   ├── pipes/
+│   │   ├── validators/
+│   │   ├── utils/
+│   │   └── models/
+│   │
+│   ├── layout/
+│   │   ├── main-layout/
+│   │   ├── sidebar/
+│   │   ├── topbar/
+│   │   ├── mobile-navigation/
+│   │   ├── footer/
+│   │   └── breadcrumbs/
+│   │
+│   ├── features/
+│   │   ├── dashboard/
+│   │   ├── school-management/
+│   │   ├── branch-management/
+│   │   ├── student-management/
+│   │   ├── parent-management/
+│   │   ├── staff-management/
+│   │   ├── user-management/
+│   │   ├── role-management/
+│   │   ├── academic-management/
+│   │   ├── attendance-management/
+│   │   ├── examination-management/
+│   │   ├── fee-management/
+│   │   ├── finance-management/
+│   │   ├── hr-management/
+│   │   ├── library-management/
+│   │   ├── transport-management/
+│   │   ├── inventory-management/
+│   │   ├── communication/
+│   │   ├── reports/
+│   │   ├── document-management/
+│   │   ├── settings/
+│   │   └── subscription-management/
+│   │
+│   ├── metadata/
+│   │   ├── entities/
+│   │   ├── forms/
+│   │   ├── tables/
+│   │   ├── filters/
+│   │   ├── navigation/
+│   │   └── permissions/
+│   │
+│   ├── services/
+│   │   ├── api/
+│   │   ├── entity-api/
+│   │   ├── lookup/
+│   │   ├── notification/
+│   │   ├── export/
+│   │   └── upload/
+│   │
+│   ├── models/
+│   ├── routes/
+│   └── app.config.ts
+
+---
+
+# 4. PROFESSIONAL UI DESIGN SYSTEM
+
+Design a modern SaaS ERP UI.
+
+The application must look like a premium commercial product.
+
+## Design principles
+
+- Clean
+- Professional
+- Minimal
+- Consistent
+- Spacious
+- Modern
+- Enterprise-ready
+- Easy to use
+- Accessible
+- Mobile responsive
+
+Avoid outdated ERP designs.
+
+Do not make the application look like a basic admin template.
+
+## Color system
+
+Create CSS variables for:
+
+- Primary
+- Primary hover
+- Secondary
+- Accent
+- Success
+- Warning
+- Error
+- Info
+- Background
+- Surface
+- Surface elevated
+- Border
+- Text primary
+- Text secondary
+- Text muted
+
+Support:
+
+- Light mode
+- Dark mode
+- System theme
+
+Allow tenant branding customization:
+
+- School logo
+- School name
+- Primary color
+- Secondary color
+- Theme configuration
+
+## Typography
+
+Use a modern readable font.
+
+Establish consistent typography for:
+
+- Page titles
+- Section titles
+- Card headings
+- Table headings
+- Body
+- Labels
+- Helper text
+- Numeric values
+
+## UI requirements
+
+- Rounded cards with consistent radius
+- Subtle shadows
+- Proper spacing
+- Consistent button sizing
+- Professional icons
+- Accessible contrast
+- Hover states
+- Focus states
+- Loading states
+- Skeleton loaders
+- Empty states
+- Error states
+- Confirmation dialogs
+- Toast notifications
+
+---
+
+# 5. MAIN APPLICATION LAYOUT
+
+Create a professional ERP shell.
+
+## Sidebar
+
+Features:
+
+- Collapsible
+- Expandable navigation groups
+- Active menu highlighting
+- Icons
+- Nested menu support
+- Role-based menu visibility
+- Permission-based visibility
+- Tooltip when collapsed
+- Responsive mobile drawer
+
+## Top navigation
+
+Include:
+
+- Sidebar toggle
+- Breadcrumbs
+- Global search
+- School selector
+- Branch selector
+- Academic session selector
+- Notifications
+- Theme toggle
+- Language selector
+- User profile
+- Profile menu
+- Logout
+
+## Main content
+
+Include:
+
+- Page title
+- Breadcrumbs
+- Optional description
+- Primary action buttons
+- Content section
+- Responsive layout
+
+---
+
+# 6. AUTHENTICATION
+
+Create a professional authentication experience.
+
+## Login
+
+Fields:
+
+- Email or username
+- Password
+- Remember me
+- Show/hide password
+
+Actions:
+
+- Login
+- Forgot password
+
+## Additional screens
+
+- Forgot password
+- Reset password
+- Change password
+- Account locked
+- Session expired
+- Unauthorized
+- Access denied
+
+## Authentication requirements
+
+Implement:
+
+- JWT authentication integration
+- Access token handling according to backend contract
+- Refresh token flow if supported
+- Authentication state
+- Session expiration handling
+- Logout
+- Route protection
+- Role-based access
+- Permission-based access
+
+Do not store sensitive credentials unnecessarily.
+
+Do not expose tokens in logs.
+
+Create:
+
+- AuthService
+- AuthState
+- AuthGuard
+- PermissionGuard
+- AuthInterceptor
+
+---
+
+# 7. MULTI-TENANT CONTEXT
+
+The application must support:
+
+- Tenant
+- School
+- Branch
+- Academic session
+
+Create reusable context selectors.
+
+The selected context must be accessible throughout the application.
+
+Context switching must:
+
+- Update application state
+- Refresh relevant data
+- Update navigation context
+- Reset invalid selections
+- Prevent stale data
+- Handle API errors
+
+Never rely on frontend tenant selection for security.
+
+The backend must independently enforce tenant and school isolation.
+
+---
+
+# 8. METADATA-DRIVEN CRUD ENGINE
+
+This is one of the most important requirements.
+
+Create a reusable CRUD engine capable of rendering CRUD screens using metadata configuration.
+
+The engine should support:
+
+- List
+- Search
+- Filters
+- Sorting
+- Pagination
+- Create
+- Edit
+- View details
+- Delete
+- Bulk actions
+- Import
+- Export
+- Column visibility
+- Column ordering
+- Row selection
+- Validation
+- Relationships
+- Lookups
+- Tabs
+- Form sections
+- Permissions
+- Conditional fields
+- Responsive layouts
+
+Generic CRUD must not require creating a separate full component for every entity.
+
+Create reusable:
+
+- EntityListComponent
+- EntityFormComponent
+- EntityDetailsComponent
+- EntityTableComponent
+- EntityFilterComponent
+- DynamicFormRenderer
+- DynamicFieldRenderer
+- DynamicTableRenderer
+- DynamicFilterRenderer
+- CrudActionHandler
+
+Entity-specific components may override generic behavior when necessary.
+
+---
+
+# 9. METADATA TYPES
+
+Create strongly typed metadata interfaces.
+
+## EntityMetadata
+
+Include:
+
+- entity
+- title
+- singularTitle
+- description
+- apiEndpoint
+- routePath
+- primaryKey
+- displayField
+- module
+- icon
+- permissions
+- features
+- form
+- table
+- filters
+- relationships
+- scope
+- actions
+- export
+- import
+- detailView
+
+## FieldMetadata
+
+Include:
+
+- key
+- name
+- label
+- type
+- description
+- placeholder
+- tooltip
+- required
+- readonly
+- disabled
+- hidden
+- visible
+- visibleInForm
+- visibleInTable
+- visibleInDetails
+- searchable
+- sortable
+- filterable
+- exportable
+- sensitive
+- defaultValue
+- order
+- width
+- minWidth
+- maxWidth
+- validators
+- options
+- lookup
+- relation
+- displayFormat
+- inputFormat
+- mask
+- prefix
+- suffix
+- conditionalVisibility
+- conditionalRequired
+- dependentFields
+- permission
+- cssClass
+
+## FormMetadata
+
+Support:
+
+- Sections
+- Tabs
+- Field groups
+- Column layout
+- Field ordering
+- Section descriptions
+- Collapsible sections
+- Wizard mode
+- Step validation
+
+## TableMetadata
+
+Support:
+
+- Columns
+- Default sorting
+- Column width
+- Fixed columns
+- Row selection
+- Actions
+- Responsive mode
+- Empty state
+- Pagination
+- Page size
+- Server-side sorting
+
+## FilterMetadata
+
+Support:
+
+- Text
+- Search
+- Select
+- Multi-select
+- Date range
+- Number range
+- Boolean
+- Status
+- Lookup
+
+---
+
+# 10. DYNAMIC FORM FIELD TYPES
+
+The Dynamic Form Engine must support the following field types.
+
+## Basic fields
+
+- Text
+- Textarea
+- Number
+- Decimal
+- Email
+- Password
+- Phone
+- URL
+- Date
+- DateTime
+- Time
+- Month
+- Year
+
+## Selection fields
+
+- Select
+- Multi-select
+- Radio
+- Checkbox
+- Checkbox group
+- Boolean toggle
+- Autocomplete
+- Lookup
+- Remote lookup
+
+## Specialized fields
+
+- Currency
+- Percentage
+- File
+- Multiple file upload
+- Image
+- Rich text
+- Color picker
+- Address
+- JSON editor
+- Tags
+- Rating
+
+## Relationship fields
+
+- Single entity reference
+- Multiple entity reference
+- Parent-child selection
+- School lookup
+- Branch lookup
+- Class lookup
+- Section lookup
+- Academic session lookup
+- Student lookup
+- Staff lookup
+
+Each field must support:
+
+- Validation
+- Error display
+- Helper text
+- Required indicator
+- Disabled state
+- Readonly state
+- Conditional visibility
+- Conditional requirement
+- Default values
+
+---
+
+# 11. FORM DESIGN
+
+Forms must be professional and easy to use.
+
+Features:
+
+- Responsive form layout
+- Two-column layout on desktop
+- One-column layout on mobile
+- Sections
+- Tabs
+- Grouping
+- Field alignment
+- Inline validation
+- Server validation error mapping
+- Save
+- Save and continue
+- Save and close
+- Cancel
+- Reset
+- Dirty-state detection
+- Unsaved changes confirmation
+
+Use Angular Reactive Forms.
+
+Form metadata must generate the form controls dynamically.
+
+Create reusable validators.
+
+Validation should support:
+
+- Required
+- Min
+- Max
+- Min length
+- Max length
+- Pattern
+- Email
+- Phone
+- Custom validator
+- Cross-field validation
+- Conditional validation
+
+Backend validation remains authoritative.
+
+---
+
+# 12. DATA TABLE ENGINE
+
+Create a reusable professional data table.
+
+Features:
+
+- Server-side pagination
+- Server-side sorting
+- Server-side filtering
+- Search
+- Column selection
+- Column resizing
+- Sticky header
+- Row selection
+- Bulk actions
+- Responsive table
+- Mobile card mode
+- Status badges
+- Avatar columns
+- Image columns
+- Date formatting
+- Currency formatting
+- Numeric formatting
+- Boolean indicators
+- Relation display
+- Custom cell rendering
+- Action menu
+
+Actions:
+
+- View
+- Edit
+- Delete
+- Duplicate
+- Activate
+- Deactivate
+
+Actions must be configurable through metadata.
+
+Implement:
+
+- Loading state
+- Skeleton state
+- Empty state
+- Error state
+- Retry
+- Pagination
+- Page size selection
+
+---
+
+# 13. API INTEGRATION
+
+Integrate with the existing backend repository:
+
+**school-mgmt-erp-service**
+
+Create a centralized API layer.
+
+## Environment configuration
+
+Use environment configurations:
+
+environment.ts
+environment.development.ts
+environment.production.ts
+
+Example:
+
+API_BASE_URL
+
+Do not hardcode API URLs inside components.
+
+## API architecture
+
+Components
+    ↓
+Feature Services
+    ↓
+Shared API Client
+    ↓
+HTTP Interceptors
+    ↓
+Backend API
+
+## Create
+
+- ApiClientService
+- BaseApiService
+- EntityApiService
+- LookupApiService
+- AuthApiService
+- UploadApiService
+- NotificationApiService
+
+## API service requirements
+
+Support:
+
+- GET
+- POST
+- PUT
+- PATCH
+- DELETE
+
+Support:
+
+- Query parameters
+- Pagination
+- Sorting
+- Filtering
+- Search
+- Headers
+- Cancellation
+- Error handling
+- Retry where appropriate
+- Timeout handling
+
+Do not create direct HTTP calls inside page components.
+
+---
+
+# 14. API ENDPOINT INTEGRATION
+
+Integrate with dedicated backend endpoints.
+
+Example endpoint structure:
+
+## Authentication
+
+POST /api/v1/auth/login
+POST /api/v1/auth/logout
+POST /api/v1/auth/refresh
+POST /api/v1/auth/forgot-password
+POST /api/v1/auth/reset-password
+POST /api/v1/auth/change-password
+GET  /api/v1/auth/me
+
+## Schools
+
+GET    /api/v1/schools
+GET    /api/v1/schools/:id
+POST   /api/v1/schools
+PUT    /api/v1/schools/:id
+PATCH  /api/v1/schools/:id
+DELETE /api/v1/schools/:id
+
+## Branches
+
+GET    /api/v1/branches
+GET    /api/v1/branches/:id
+POST   /api/v1/branches
+PUT    /api/v1/branches/:id
+PATCH  /api/v1/branches/:id
+DELETE /api/v1/branches/:id
+
+## Students
+
+GET    /api/v1/students
+GET    /api/v1/students/:id
+POST   /api/v1/students
+PUT    /api/v1/students/:id
+PATCH  /api/v1/students/:id
+DELETE /api/v1/students/:id
+
+## Parents
+
+GET    /api/v1/parents
+GET    /api/v1/parents/:id
+POST   /api/v1/parents
+PUT    /api/v1/parents/:id
+PATCH  /api/v1/parents/:id
+DELETE /api/v1/parents/:id
+
+## Staff
+
+GET    /api/v1/staff
+GET    /api/v1/staff/:id
+POST   /api/v1/staff
+PUT    /api/v1/staff/:id
+PATCH  /api/v1/staff/:id
+DELETE /api/v1/staff/:id
+
+## Academic
+
+GET    /api/v1/classes
+GET    /api/v1/sections
+GET    /api/v1/subjects
+GET    /api/v1/academic-sessions
+
+Implement corresponding API services.
+
+IMPORTANT:
+
+Do not assume that all endpoint names or response formats are identical.
+
+Before integration:
+
+1. Inspect the backend API project.
+2. Identify available routes.
+3. Identify request DTOs.
+4. Identify response DTOs.
+5. Identify authentication requirements.
+6. Identify pagination format.
+7. Identify lookup endpoint formats.
+8. Identify error response structure.
+9. Create a centralized API mapping.
+10. Document endpoint discrepancies.
+
+Do not silently invent missing backend APIs.
+
+If an endpoint is unavailable:
+
+- Identify the missing endpoint.
+- Create a clearly documented integration placeholder.
+- Do not fake a successful response.
+- Do not permanently use mock data.
+
+---
+
+# 15. API RESPONSE HANDLING
+
+Create centralized response handling.
+
+Support common response formats such as:
+
+{
+  "success": true,
+  "data": {},
+  "message": "Success"
+}
+
+and paginated responses:
+
+{
+  "success": true,
+  "data": [],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 100,
+    "totalPages": 10
+  }
+}
+
+The response parser must be adaptable to the actual backend contract.
+
+Do not make every component responsible for parsing API responses.
+
+---
+
+# 16. ERROR HANDLING
+
+Create a centralized API error handler.
+
+Support:
+
+- 400 Bad Request
+- 401 Unauthorized
+- 403 Forbidden
+- 404 Not Found
+- 409 Conflict
+- 422 Validation Error
+- 429 Too Many Requests
+- 500 Server Error
+- Network failure
+- Timeout
+
+Display errors professionally.
+
+Validation errors must be mapped to form controls whenever possible.
+
+Provide:
+
+- Toast messages
+- Inline validation
+- Retry actions
+- Error pages
+- Friendly messages
+
+Never expose internal stack traces to the user.
+
+---
+
+# 17. PERMISSIONS
+
+Implement frontend permission handling.
+
+Support permissions such as:
+
+- View
+- Create
+- Edit
+- Delete
+- Export
+- Import
+- Approve
+- Reject
+- Publish
+- Manage
+
+Create:
+
+- PermissionService
+- PermissionDirective
+- PermissionGuard
+- Permission-aware navigation
+
+Example:
+
+*hasPermission="'students.create'"
+
+Permission-based functionality must include:
+
+- Sidebar menu
+- Buttons
+- Form actions
+- Table actions
+- Routes
+
+Frontend permissions are only a UI control.
+
+Backend must independently authorize every request.
+
+---
+
+# 18. MODULES AND NAVIGATION
+
+Create a professional navigation hierarchy.
+
+## Dashboard
+
+- Overview
+- Analytics
+- Statistics
+- Recent activity
+
+## School Management
+
+- Schools
+- Branches
+- School Settings
+- Branding
+- Academic Sessions
+- Holidays
+- Departments
+- Designations
+
+## Student Management
+
+- Students
+- Admissions
+- Student Promotion
+- Student Transfer
+- Withdrawals
+- Alumni
+- Student Documents
+
+## Parent Management
+
+- Parents
+- Guardians
+- Parent-Student Relationships
+
+## Staff Management
+
+- Staff
+- Departments
+- Designations
+- Qualifications
+- Documents
+- Staff Attendance
+- Staff Leave
+
+## Academic Management
+
+- Classes
+- Sections
+- Subjects
+- Subject Groups
+- Class Subjects
+- Teacher Assignments
+- Timetable
+- Curriculum
+- Homework
+- Assignments
+
+## Attendance
+
+- Student Attendance
+- Staff Attendance
+- Attendance Reports
+- Attendance Corrections
+
+## Examination
+
+- Exam Types
+- Examinations
+- Exam Schedule
+- Exam Subjects
+- Marks Entry
+- Grading Scales
+- Grades
+- Results
+- Report Cards
+
+## Fees
+
+- Fee Categories
+- Fee Structures
+- Fee Structure Items
+- Student Fees
+- Installments
+- Fee Collection
+- Receipts
+- Discounts
+- Scholarships
+- Concessions
+- Refunds
+- Late Fee Rules
+
+## Finance
+
+- Financial Years
+- Accounts
+- Income
+- Expenses
+- Transactions
+- Bank Accounts
+- Bank Transactions
+
+## HR & Payroll
+
+- Leave Types
+- Leave Policies
+- Leave Requests
+- Leave Balances
+- Salary Structures
+- Salary Components
+- Payroll
+- Payslips
+- Staff Loans
+- Advances
+
+## Library
+
+- Book Categories
+- Books
+- Book Copies
+- Authors
+- Publishers
+- Library Members
+- Book Issues
+- Reservations
+- Fines
+
+## Transport
+
+- Vehicles
+- Drivers
+- Routes
+- Stops
+- Route Stops
+- Student Transport Assignments
+- Maintenance
+- Transport Fees
+
+## Inventory
+
+- Inventory Categories
+- Items
+- Stock
+- Suppliers
+- Purchase Orders
+- Goods Receipts
+- Stock Movements
+
+## Assets
+
+- Asset Categories
+- Assets
+- Assignments
+- Maintenance
+
+## Communication
+
+- Announcements
+- Notifications
+- Templates
+- Message Threads
+- Messages
+
+## Documents
+
+- Document Categories
+- Documents
+- Templates
+- Generated Documents
+
+## Reports
+
+- Student Reports
+- Attendance Reports
+- Examination Reports
+- Fee Reports
+- Staff Reports
+- Financial Reports
+- Transport Reports
+- Inventory Reports
+
+## Administration
+
+- Users
+- Roles
+- Permissions
+- Settings
+- Audit Logs
+
+## SaaS Administration
+
+- Tenants
+- Subscriptions
+- Plans
+- Billing
+- Usage
+- Feature Configuration
+
+---
+
+# 19. STUDENT MODULE
+
+The Student module must be a professional implementation.
+
+## Student listing
+
+Display:
+
+- Student photo
+- Admission number
+- Student name
+- Class
+- Section
+- Roll number
+- Parent name
+- Phone
+- Status
+
+Filters:
+
+- Academic session
+- Class
+- Section
+- Gender
+- Status
+- Admission date
+- Admission type
+
+Actions:
+
+- View
+- Edit
+- Delete
+- Promote
+- Transfer
+- Withdraw
+- Export
+
+## Student form
+
+Create a tab-based form.
+
+### Tab 1: Personal Information
+
+- Admission number
+- Registration number
+- First name
+- Middle name
+- Last name
+- Date of birth
+- Gender
+- Blood group
+- Nationality
+- Religion
+- Category
+- Mother tongue
+- Profile photo
+
+### Tab 2: Admission Information
+
+- Academic session
+- Admission date
+- Class
+- Section
+- Roll number
+- Admission type
+- Previous school
+- Previous class
+- Previous school transfer certificate number
+
+### Tab 3: Parent Information
+
+- Father
+- Mother
+- Guardian
+- Relationship
+- Primary guardian
+- Parent contact
+
+### Tab 4: Contact Information
+
+- Email
+- Mobile
+- Alternate mobile
+- Current address
+- Permanent address
+- City
+- State
+- Country
+- Postal code
+
+### Tab 5: Medical Information
+
+- Blood group
+- Allergies
+- Medical conditions
+- Medication
+- Special needs
+
+### Tab 6: Transport
+
+- Transport required
+- Route
+- Stop
+
+### Tab 7: Documents
+
+- Birth certificate
+- Previous school certificate
+- Transfer certificate
+- Student photo
+- Other documents
+
+### Tab 8: Additional Information
+
+- Remarks
+- Scholarship
+- Discount
+- Hostel
+- Status
+
+Create a student details page with:
+
+- Student profile
+- Academic details
+- Parent information
+- Attendance summary
+- Fee summary
+- Examination results
+- Documents
+- Timeline
+
+---
+
+# 20. DASHBOARD
+
+Create a professional dashboard.
+
+Widgets:
+
+- Total Students
+- Active Students
+- Total Staff
+- Classes
+- Today's Attendance
+- Fee Collection
+- Pending Fees
+- Upcoming Exams
+- Recent Admissions
+- Recent Activities
+- Attendance Trend
+- Fee Collection Trend
+- Student Distribution
+- Quick Actions
+
+Dashboard data must come from backend APIs.
+
+Create reusable:
+
+- StatCard
+- ChartCard
+- DashboardWidget
+- RecentActivity
+- QuickAction
+
+Do not hardcode production dashboard statistics.
+
+---
+
+# 21. CRUD WORKFLOW
+
+All CRUD screens must follow a consistent workflow.
+
+## Create
+
+1. Click Add.
+2. Open form page or dialog based on metadata.
+3. Generate controls.
+4. Validate.
+5. Submit to API.
+6. Show loading.
+7. Handle response.
+8. Show success.
+9. Refresh list.
+10. Navigate appropriately.
+
+## Edit
+
+1. Load entity.
+2. Populate form.
+3. Detect changes.
+4. Validate.
+5. Submit update.
+6. Handle server errors.
+7. Refresh details/list.
+
+## View
+
+Provide:
+
+- Details page
+- Read-only form
+- Related entities
+- Actions
+
+## Delete
+
+1. Permission check.
+2. Confirmation dialog.
+3. API request.
+4. Error handling.
+5. Refresh list.
+
+Support soft-delete behavior according to backend implementation.
+
+---
+
+# 22. GENERIC CRUD ROUTING
+
+Create reusable routes.
+
+Example:
+
+/management/students
+/management/students/create
+/management/students/:id
+/management/students/:id/edit
+
+Generic CRUD route pattern:
+
+/management/:module/:entity
+
+Metadata determines:
+
+- Title
+- Columns
+- Filters
+- Form fields
+- Actions
+- API endpoint
+- Permissions
+
+Entity configuration example:
+
+StudentEntityMetadata
+
+ParentEntityMetadata
+
+StaffEntityMetadata
+
+SchoolEntityMetadata
+
+BranchEntityMetadata
+
+ClassEntityMetadata
+
+SectionEntityMetadata
+
+SubjectEntityMetadata
+
+Metadata must be strongly typed.
+
+Do not place all metadata in one giant file.
+
+Organize metadata by module.
+
+---
+
+# 23. LOOKUP ENGINE
+
+Create a reusable lookup engine.
+
+Support:
+
+- Local lookup
+- API lookup
+- Searchable dropdown
+- Remote autocomplete
+- Dependent lookup
+
+Examples:
+
+School
+    ↓
+Branch
+
+Academic Session
+    ↓
+Class
+    ↓
+Section
+
+Class
+    ↓
+Subject
+
+Teacher
+    ↓
+Assigned Subjects
+
+Student
+    ↓
+Parent
+
+Lookups must support:
+
+- Search
+- Pagination
+- Loading state
+- Empty state
+- Caching
+- Error handling
+
+Avoid loading huge datasets into dropdowns.
+
+---
+
+# 24. FILE UPLOAD
+
+Create a reusable upload system.
+
+Support:
+
+- Profile images
+- Documents
+- Multiple files
+- Drag and drop
+- Preview
+- File size validation
+- File type validation
+- Upload progress
+- Remove
+- Replace
+
+Integrate with backend upload endpoints.
+
+Do not assume upload URLs.
+
+Inspect actual backend endpoints.
+
+---
+
+# 25. IMPORT AND EXPORT
+
+Create reusable import/export UI.
+
+## Import
+
+Support:
+
+- Excel
+- CSV
+
+Workflow:
+
+1. Download template.
+2. Upload file.
+3. Validate.
+4. Preview.
+5. Show validation errors.
+6. Confirm.
+7. Submit.
+8. Display import results.
+
+## Export
+
+Support:
+
+- Excel
+- CSV
+- PDF where applicable
+
+Export must respect:
+
+- Permissions
+- Filters
+- Current context
+- Backend pagination/export APIs
+
+Do not export sensitive data without permission.
+
+---
+
+# 26. NOTIFICATIONS
+
+Create a notification center.
+
+Features:
+
+- Notification icon
+- Unread count
+- Notification list
+- Mark as read
+- Mark all as read
+- Notification details
+- Navigation based on notification
+- Notification preferences
+
+Use backend APIs.
+
+---
+
+# 27. SEARCH
+
+Implement global search.
+
+Search categories:
+
+- Students
+- Staff
+- Parents
+- Classes
+- Admissions
+- Fees
+- Documents
+
+Features:
+
+- Debounced search
+- Keyboard navigation
+- Search suggestions
+- Recent searches
+- Category grouping
+- Permission-aware results
+
+Do not send unnecessary requests on every keystroke.
+
+---
+
+# 28. RESPONSIVE DESIGN
+
+The application must work on:
+
+- Desktop
+- Laptop
+- Tablet
+- Mobile
+
+Desktop:
+
+- Sidebar
+- Top navigation
+- Full data tables
+- Multi-column forms
+
+Tablet:
+
+- Collapsible sidebar
+- Adaptive forms
+- Compact tables
+
+Mobile:
+
+- Drawer navigation
+- Single-column forms
+- Card-based lists where appropriate
+- Touch-friendly actions
+- Minimum 44px touch target
+- Responsive dialogs
+- Bottom actions when appropriate
+
+---
+
+# 29. STATE MANAGEMENT
+
+Use Angular Signals where appropriate.
+
+Manage:
+
+- Authentication
+- User profile
+- Permissions
+- Tenant
+- School
+- Branch
+- Academic session
+- Theme
+- Navigation
+- Notifications
+
+Avoid unnecessary global state.
+
+Use component-local state for isolated UI behavior.
+
+Use RxJS for asynchronous API workflows.
+
+---
+
+# 30. SECURITY
+
+Frontend security requirements:
+
+- Authentication guard
+- Permission guard
+- No hardcoded credentials
+- No secret API keys
+- Safe token handling
+- Input validation
+- Output safety
+- XSS protection
+- Secure file upload handling
+- Permission-based actions
+- Tenant-aware context
+- Session expiry
+- Logout on authentication failure
+
+Never trust frontend permission checks as the only security layer.
+
+---
+
+# 31. PERFORMANCE
+
+Implement:
+
+- Lazy-loaded routes
+- Lazy-loaded modules/features
+- Pagination
+- Server-side search
+- Debouncing
+- Efficient rendering
+- TrackBy or equivalent stable tracking
+- OnPush change detection where beneficial
+- Caching of lookup data
+- Avoid redundant API calls
+- Proper subscription management
+- Image optimization
+
+---
+
+# 32. ACCESSIBILITY
+
+Implement:
+
+- Keyboard navigation
+- Accessible labels
+- ARIA attributes
+- Proper focus management
+- Dialog focus trapping
+- Screen-reader-friendly validation
+- Accessible color contrast
+- Keyboard-operable dropdowns
+- Visible focus indicators
+
+---
+
+# 33. INTERNATIONALIZATION
+
+Support multiple languages.
+
+Initial languages:
+
+- English
+- Hindi
+
+Implement:
+
+- Translation files
+- Language selector
+- Localized dates
+- Localized numbers
+- Currency
+- RTL-ready architecture
+
+Do not hardcode UI strings in components.
+
+---
+
+# 34. TESTING
+
+Create tests for:
+
+- Metadata definitions
+- Dynamic forms
+- Field rendering
+- Validators
+- CRUD engine
+- API services
+- Interceptors
+- Guards
+- Permission directives
+- Authentication
+- Error handling
+
+Create integration tests for:
+
+- Student creation
+- Student editing
+- Student deletion
+- Parent management
+- Staff management
+- Academic entities
+- Lookup behavior
+
+---
+
+# 35. API DOCUMENTATION AND INTEGRATION
+
+Create:
+
+- API integration documentation
+- Endpoint mapping
+- Request models
+- Response models
+- Authentication requirements
+- Error mapping
+- Pagination mapping
+- Lookup configuration
+
+Maintain a central API endpoint configuration.
+
+Do not scatter endpoint strings throughout components.
+
+---
+
+# 36. IMPLEMENTATION PHASES
+
+Do not attempt to create the entire application in one uncontrolled operation.
+
+Implement in phases.
+
+## Phase 1: Foundation
+
+Create:
+
+- Angular project
+- Folder architecture
+- Theme
+- Design system
+- Routing
+- Layout
+- Sidebar
+- Topbar
+- Responsive shell
+- Authentication UI
+
+## Phase 2: Core Services
+
+Implement:
+
+- API client
+- HTTP interceptor
+- Authentication service
+- Authentication state
+- Guards
+- Permission service
+- Tenant context
+- School context
+- Branch context
+- Academic session context
+- Error handler
+
+## Phase 3: Metadata Engine
+
+Implement:
+
+- Metadata types
+- Entity metadata registry
+- Field metadata
+- Form metadata
+- Table metadata
+- Filter metadata
+- Relationship metadata
+- Dynamic form engine
+- Dynamic table engine
+- Dynamic filter engine
+- Lookup engine
+
+## Phase 4: CRUD Engine
+
+Implement:
+
+- List
+- Search
+- Filters
+- Pagination
+- Sorting
+- Create
+- Edit
+- Details
+- Delete
+- Bulk actions
+- Import
+- Export
+
+## Phase 5: Core Modules
+
+Implement:
+
+1. Schools
+2. Branches
+3. Academic Sessions
+4. Classes
+5. Sections
+6. Subjects
+7. Students
+8. Parents
+9. Staff
+10. Users
+11. Roles
+12. Permissions
+
+## Phase 6: Academic Modules
+
+Implement:
+
+- Teacher assignments
+- Timetable
+- Attendance
+- Examinations
+- Marks
+- Grades
+- Results
+- Report cards
+
+## Phase 7: Finance
+
+Implement:
+
+- Fee categories
+- Fee structures
+- Student fees
+- Installments
+- Fee collection
+- Receipts
+- Discounts
+- Scholarships
+- Expenses
+- Accounts
+
+## Phase 8: Other Modules
+
+Implement:
+
+- HR
+- Payroll
+- Library
+- Transport
+- Inventory
+- Assets
+- Communication
+- Documents
+- Reports
+
+## Phase 9: SaaS Administration
+
+Implement:
+
+- Tenant management
+- Subscription plans
+- Subscriptions
+- Billing
+- Usage
+- Platform configuration
+
+## Phase 10: Quality
+
+Implement:
+
+- Testing
+- Accessibility
+- Performance optimization
+- Security review
+- Responsive testing
+- Production configuration
+- Deployment documentation
+
+---
+
+# 37. IMPLEMENTATION RULES FOR AI CODING AGENT
+
+You are acting as a senior Angular architect and full-stack integration engineer.
+
+Follow these rules strictly:
+
+1. Inspect the existing repository before modifying files.
+2. Do not blindly overwrite existing work.
+3. Preserve useful code.
+4. Use consistent architecture.
+5. Use strict TypeScript.
+6. Do not use `any`.
+7. Avoid duplicate components.
+8. Avoid duplicate services.
+9. Use reusable components.
+10. Use metadata-driven CRUD.
+11. Use actual backend endpoints.
+12. Do not permanently use mock data.
+13. Do not invent backend response structures.
+14. Do not invent endpoints without documenting them.
+15. Do not place API calls in UI components.
+16. Do not place business logic in metadata.
+17. Do not bypass authentication.
+18. Do not bypass permission checks.
+19. Do not trust frontend tenant context for security.
+20. Do not expose sensitive data.
+21. Do not leave incomplete TODO implementations.
+22. Do not create empty placeholder components for completed modules.
+23. Ensure all routes work.
+24. Ensure all buttons have working actions.
+25. Ensure forms are functional.
+26. Ensure API error handling is implemented.
+27. Ensure loading and empty states are implemented.
+28. Ensure responsive layouts.
+29. Ensure code builds successfully.
+30. Ensure tests pass.
+
+---
+
+# 38. DEVELOPMENT WORKFLOW
+
+For every implementation phase:
+
+1. Inspect existing project.
+2. Review relevant files.
+3. Create an implementation plan.
+4. Implement the feature.
+5. Integrate with existing architecture.
+6. Run TypeScript checks.
+7. Run lint.
+8. Run tests.
+9. Run Angular build.
+10. Fix errors.
+11. Update documentation.
+12. Summarize files changed.
+
+Do not proceed with broken builds.
+
+---
+
+# 39. FINAL QUALITY REQUIREMENT
+
+The final application must feel like a polished, premium commercial School Management ERP.
+
+It must not look like:
+
+- A simple demo
+- A student project
+- A generic admin template
+- A static dashboard
+- A collection of disconnected forms
+
+It must provide a cohesive experience with:
+
+- Consistent design
+- Reusable components
+- Metadata-driven CRUD
+- Real API integration
+- Multi-tenant support
+- School and branch context
+- Permission-aware UI
+- Professional dashboard
+- Responsive design
+- Accessible interaction
+- Production-ready architecture
+
+The final result must be a fully functional frontend that can be connected to and deployed alongside the existing:
+
+**school-mgmt-erp-service**
+
+---
+
+# 40. FIRST EXECUTION TASK
+
+Start by inspecting the existing repository.
+
+Then implement **Phase 1 and Phase 2 completely**.
+
+Do not implement all modules immediately.
+
+For the first execution, deliver:
+
+- Angular 22 project foundation
+- Folder architecture
+- Professional theme
+- Main application layout
+- Sidebar navigation
+- Top navigation
+- Responsive mobile layout
+- Login screen
+- Authentication architecture
+- API client
+- HTTP interceptor
+- Authentication guard
+- Permission guard
+- Tenant context
+- School context
+- Branch context
+- Academic session context
+- Error handling
+- Environment configuration
+
+Use actual files and working code.
+
+Ensure the application builds successfully before finishing.
+
+After Phase 1 and Phase 2 are complete, provide:
+
+1. Implemented features
+2. Files created
+3. Files modified
+4. API integration status
+5. Build status
+6. Test status
+7. Remaining work for Phase 3
+
+Then continue phase-by-phase only after the current phase is stable.
+
+**Do not generate only a plan. Implement the actual code in the repository.**
