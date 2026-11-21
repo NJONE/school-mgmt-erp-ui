@@ -11,6 +11,7 @@ import { DynamicFilterEngine } from '../core/metadata/dynamic-filter.service';
 import { LookupEngine } from '../core/metadata/lookup.service';
 import { EntityMetadata, FieldMetadata, LookupOption } from '../core/metadata/metadata.models';
 import { CrudEngine } from '../core/crud/crud-engine.service';
+import { PermissionService } from '../core/permissions/permission.service';
 
 @Component({
   selector: 'app-dynamic-management',
@@ -23,7 +24,7 @@ import { CrudEngine } from '../core/crud/crud-engine.service';
           <button type="button" class="secondary-button" (click)="fileInput.click()">Import</button>
           <input #fileInput class="file-input" type="file" accept=".csv,.json" (change)="importFile($event)" />
           <button type="button" class="secondary-button" (click)="exportRows()">Export</button>
-          <button type="button" class="action-button" (click)="openCreate()">＋ Add {{ entity()?.label }}</button>
+          @if (canCreate()) { <button type="button" class="action-button" (click)="openCreate()">＋ Add {{ entity()?.label }}</button> }
         </div>
       </header>
 
@@ -47,7 +48,7 @@ import { CrudEngine } from '../core/crud/crud-engine.service';
             }
           }
           @if (selectedIds().length) {
-            <button type="button" class="danger-button" (click)="bulkDelete()">Delete selected ({{ selectedIds().length }})</button>
+            @if (canDelete()) { <button type="button" class="danger-button" (click)="bulkDelete()">Delete selected ({{ selectedIds().length }})</button> }
           }
         </section>
 
@@ -79,8 +80,8 @@ import { CrudEngine } from '../core/crud/crud-engine.service';
                       }
                       <td class="row-actions">
                         <button type="button" (click)="openDetails(row)">View</button>
-                        <button type="button" (click)="openEdit(row)">Edit</button>
-                        <button type="button" class="danger-link" (click)="deleteRow(row)">Delete</button>
+                        @if (canUpdate()) { <button type="button" (click)="openEdit(row)">Edit</button> }
+                        @if (canDelete()) { <button type="button" class="danger-link" (click)="deleteRow(row)">Delete</button> }
                       </td>
                     </tr>
                   } @empty {
@@ -160,6 +161,7 @@ export class DynamicManagementComponent implements OnInit {
   readonly table = inject(DynamicTableEngine);
   private readonly filters = inject(DynamicFilterEngine);
   readonly lookup = inject(LookupEngine);
+  private readonly permissions = inject(PermissionService);
   lookupOptions: Record<string, LookupOption[]> = {};
 
   readonly entity = signal<EntityMetadata | undefined>(undefined);
@@ -232,6 +234,21 @@ export class DynamicManagementComponent implements OnInit {
     if (this.sortBy() === key) this.sortDirection.set(this.sortDirection() === 'asc' ? 'desc' : 'asc');
     else { this.sortBy.set(key); this.sortDirection.set('asc'); }
     this.load();
+  }
+
+  canCreate(): boolean {
+    const permission = this.entity()?.permissions?.create;
+    return !permission || this.permissions.has(permission);
+  }
+
+  canUpdate(): boolean {
+    const permission = this.entity()?.permissions?.update;
+    return !permission || this.permissions.has(permission);
+  }
+
+  canDelete(): boolean {
+    const permission = this.entity()?.permissions?.delete;
+    return !permission || this.permissions.has(permission);
   }
 
   rowId(row: Record<string, unknown>): string | number {

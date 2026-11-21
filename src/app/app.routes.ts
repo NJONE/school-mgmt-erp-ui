@@ -24,7 +24,6 @@ export const routes: Routes = [
       {
         path: 'management/:entity',
         canActivate: [permissionGuard],
-        data: { permissions: ['management.view'] },
         loadComponent: () => import('./features/dynamic-management.component').then((m) => m.DynamicManagementComponent),
       },
       { path: 'attendance', loadComponent: () => import('./features/management-placeholder.component').then((m) => m.ManagementPlaceholderComponent), data: { title: 'Attendance' } },
