@@ -28,6 +28,16 @@ Implemented:
 - Lazy-loaded dashboard and management route shells
 - Unauthorized and backend-integration placeholder states
 
+## Phase 3 and 4 status
+
+Implemented:
+
+- Metadata types and entity metadata registry
+- Field, form, table, filter, and relationship metadata
+- Dynamic form, table, filter, and lookup engines
+- Generic CRUD engine for list, search, filters, sorting, pagination, create, edit, details, delete, bulk delete, import, and CSV/JSON export
+- Dynamic management route replacing placeholder screens
+
 ## Backend integration
 
 The `school-mgmt-erp-service` repository is not available in this workspace. The frontend uses the documented `/api/v1` endpoint structure, but no route or response contract has been verified.
