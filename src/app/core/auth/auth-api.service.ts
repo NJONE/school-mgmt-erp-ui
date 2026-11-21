@@ -28,4 +28,16 @@ export class AuthApiService {
       map((response) => response.data),
     );
   }
+
+  forgotPassword(email: string): Observable<unknown> {
+    return this.api.post<unknown>(API_ENDPOINTS.auth.forgotPassword, { email });
+  }
+
+  resetPassword(token: string, password: string): Observable<unknown> {
+    return this.api.post<unknown>(API_ENDPOINTS.auth.resetPassword, { token, password });
+  }
+
+  changePassword(currentPassword: string, password: string): Observable<unknown> {
+    return this.api.post<unknown>(API_ENDPOINTS.auth.changePassword, { currentPassword, password });
+  }
 }

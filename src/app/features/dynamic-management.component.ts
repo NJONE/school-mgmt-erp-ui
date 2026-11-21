@@ -2,7 +2,6 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
 import { ApiError } from '../core/models/api.models';
 import { EntityMetadataRegistry } from '../core/metadata/entity-registry.service';
 import { DynamicFormEngine } from '../core/metadata/dynamic-form.service';

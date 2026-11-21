@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { AuthApiService } from '../../core/auth/auth-api.service';
 import { ApiError } from '../../core/models/api.models';
 
 interface LoginForm {
@@ -31,7 +32,7 @@ interface LoginForm {
           <p class="subtitle">Sign in to continue to your workspace</p>
           @if (error()) { <div class="form-error" role="alert">{{ error() }}</div> }
           <label>Email or username
-            <input type="email" formControlName="email" autocomplete="username" placeholder="name@school.edu" />
+            <input type="text" formControlName="email" autocomplete="username" placeholder="name@school.edu or username" />
           </label>
           <label>Password
             <div class="password-wrap">
@@ -41,7 +42,7 @@ interface LoginForm {
           </label>
           <div class="form-row">
             <label class="checkbox"><input type="checkbox" formControlName="rememberMe" /> <span>Remember me</span></label>
-            <a href="#">Forgot password?</a>
+            <button type="button" class="text-button" (click)="forgotPassword()">Forgot password?</button>
           </div>
           <button class="primary-button" type="submit" [disabled]="form.invalid || auth.loading()">
             {{ auth.loading() ? 'Signing in…' : 'Sign in' }}
@@ -59,9 +60,10 @@ export class LoginComponent {
   private readonly route = inject(ActivatedRoute);
   readonly showPassword = signal(false);
   readonly error = signal<string | null>(null);
+  private readonly authApi = inject(AuthApiService);
 
   readonly form = new FormGroup<LoginForm>({
-    email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
+    email: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     rememberMe: new FormControl(false, { nonNullable: true }),
   });
@@ -77,6 +79,20 @@ export class LoginComponent {
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/dashboard';
         void this.router.navigateByUrl(returnUrl);
       },
+      error: (apiError: ApiError) => this.error.set(apiError.message),
+    });
+  }
+
+  forgotPassword(): void {
+    const email = this.form.controls.email.value.trim();
+    if (!email) {
+      this.form.controls.email.markAsTouched();
+      this.error.set('Enter your email or username first.');
+      return;
+    }
+    this.error.set(null);
+    this.authApi.forgotPassword(email).subscribe({
+      next: () => this.error.set('If an account exists, password reset instructions will be sent.'),
       error: (apiError: ApiError) => this.error.set(apiError.message),
     });
   }

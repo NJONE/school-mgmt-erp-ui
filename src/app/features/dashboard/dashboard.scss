@@ -20,8 +20,8 @@
 .chart-placeholder span { font-weight: 800; color: var(--text-secondary); }
 .chart-placeholder p { font-size: 12px; }
 .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
-.quick-actions button { height: 78px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text-primary); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; cursor: pointer; }
-.quick-actions button:hover { border-color: var(--primary); background: var(--primary-soft); }
+.quick-actions a { height: 78px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text-primary); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; cursor: pointer; text-decoration: none; }
+.quick-actions a:hover { border-color: var(--primary); background: var(--primary-soft); }
 .quick-actions span { color: var(--primary); font-size: 18px; }
 .quick-actions b { font-size: 12px; }
 .loading-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }

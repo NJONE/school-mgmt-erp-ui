@@ -484,7 +484,7 @@ export class EntityMetadataRegistry {
         searchable: true,
       },
       filters: statusFilter
-        ? [{ key: 'status', label: 'Status', type: 'select', options: this.statusOptions() }]
+        ? [{ key: 'status', label: 'Status', type: 'select', options: statusFilter.options ?? this.statusOptions() }]
         : [],
       relationships: [],
       permissions: {
