@@ -27,8 +27,8 @@ export class AuthService {
     this.loadingSignal.set(true);
     return this.api.login(request).pipe(
       tap({
-        next: (response) => {
-          this.storeSession(response.data.user, response.data.tokens);
+        next: (response: any) => {
+          this.storeSession(response.data.identity, response.data);
           this.loadingSignal.set(false);
         },
         error: () => this.loadingSignal.set(false),
@@ -53,7 +53,7 @@ export class AuthService {
     return this.userSignal()?.permissions.includes(permission) === true;
   }
 
-  storeSession(user: AuthUser, tokens: AuthTokens): void {
+  storeSession(user: AuthUser, tokens: AuthTokens): void {   
     localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
     if (tokens.refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
