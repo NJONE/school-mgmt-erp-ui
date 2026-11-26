@@ -1,11 +1,20 @@
-import { Component, input, output } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, OnInit, DestroyRef, input, output, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter } from 'rxjs';
+import { PermissionService } from '../../core/permissions/permission.service';
 
-interface NavItem {
+interface NavLink {
   label: string;
   icon: string;
-  route?: string;
-  children?: NavItem[];
+  route: string;
+  permission?: string;
+}
+
+interface NavGroup {
+  label: string;
+  icon: string;
+  children: NavLink[];
 }
 
 @Component({
@@ -13,80 +22,209 @@ interface NavItem {
   imports: [RouterLink, RouterLinkActive],
   template: `
     <aside class="sidebar" [class.collapsed]="collapsed()">
-      <div class="brand">
-        <div class="brand-mark">E</div>
-        @if (!collapsed()) { <div><strong>EduCore</strong><span>School ERP</span></div> }
-      </div>
-      <nav>
-        @for (item of items; track item.label) {
-          @if (item.route) {
-            <a [routerLink]="item.route" routerLinkActive="active" [title]="collapsed() ? item.label : null">
-              <span class="nav-icon">{{ item.icon }}</span>
-              @if (!collapsed()) { <span>{{ item.label }}</span> }
-            </a>
-          } @else {
-            <button type="button" [title]="collapsed() ? item.label : null">
-              <span class="nav-icon">{{ item.icon }}</span>
-              @if (!collapsed()) { <span>{{ item.label }}</span><span class="chevron">›</span> }
-            </button>
-          }
+      <a class="brand" routerLink="/dashboard" aria-label="EduCore dashboard" (click)="closeMobile.emit()">
+        <span class="brand-mark">E</span>
+        @if (!collapsed()) {
+          <span class="brand-copy"><strong>EduCore</strong><small>School ERP</small></span>
         }
+      </a>
+      <nav aria-label="Main navigation">
+        <a
+          class="dashboard-link"
+          routerLink="/dashboard"
+          routerLinkActive="active"
+          [title]="collapsed() ? 'Dashboard' : null"
+          (click)="closeMobile.emit()"
+        >
+          <span class="nav-icon">▦</span>
+          @if (!collapsed()) { <span>Dashboard</span> }
+        </a>
+        @for (group of visibleGroups(); track group.label) {
+          <section class="nav-group">
+            @if (!collapsed()) {
+              <button
+                class="group-toggle"
+                type="button"
+                [attr.aria-expanded]="isExpanded(group.label)"
+                (click)="toggleGroup(group.label)"
+              >
+                <span class="group-label"><span aria-hidden="true">{{ group.icon }}</span>{{ group.label }}</span>
+                <span class="chevron" aria-hidden="true">{{ isExpanded(group.label) ? '⌄' : '›' }}</span>
+              </button>
+            }
+            @if (collapsed() || isExpanded(group.label)) {
+              @for (item of group.children; track item.route) {
+                <a
+                  [routerLink]="item.route"
+                  routerLinkActive="active"
+                  [title]="collapsed() ? item.label : null"
+                  (click)="closeMobile.emit()"
+                >
+                  <span class="nav-icon">{{ item.icon }}</span>
+                  @if (!collapsed()) { <span>{{ item.label }}</span> }
+                </a>
+              }
+            }
+          </section>
+        }
+        <a
+          class="settings-link"
+          routerLink="/settings"
+          routerLinkActive="active"
+          [title]="collapsed() ? 'Preferences' : null"
+          (click)="closeMobile.emit()"
+        >
+          <span class="nav-icon">⚙</span>
+          @if (!collapsed()) { <span>Preferences</span> }
+        </a>
       </nav>
+      @if (!collapsed()) {
+        <footer class="sidebar-footer">
+          <span class="online-dot"></span>
+          <span>School operations</span>
+        </footer>
+      }
     </aside>
   `,
   styleUrl: './sidebar.scss',
 })
-export class SidebarComponent {
+export class SidebarComponent implements OnInit {
   readonly collapsed = input(false);
   readonly closeMobile = output<void>();
+  private readonly permissions = inject(PermissionService);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  readonly expandedGroups = signal<Set<string>>(new Set());
 
-  readonly items: NavItem[] = [
-    { label: 'Dashboard', icon: '▦', route: '/dashboard' },
-    { label: 'Schools', icon: '⌂', route: '/management/schools' },
-    { label: 'Branches', icon: '◇', route: '/management/branches' },
-    { label: 'Academic', icon: 'A', route: '/management/academic-sessions' },
-    { label: 'Classes', icon: 'C', route: '/management/classes' },
-    { label: 'Sections', icon: 'S', route: '/management/sections' },
-    { label: 'Subjects', icon: 'J', route: '/management/subjects' },
-    { label: 'Students', icon: '◎', route: '/management/students' },
-    { label: 'Parents', icon: '♙', route: '/management/parents' },
-    { label: 'Staff', icon: '♧', route: '/management/staff' },
-    { label: 'Users', icon: 'U', route: '/management/users' },
-    { label: 'Roles', icon: 'R', route: '/management/roles' },
-    { label: 'Permissions', icon: 'P', route: '/management/permissions' },
-    { label: 'Teacher Assignments', icon: 'T', route: '/management/teacher-assignments' },
-    { label: 'Timetable', icon: 'T', route: '/management/timetables' },
-    { label: 'Attendance', icon: '✓', route: '/management/attendance' },
-    { label: 'Examinations', icon: 'E', route: '/management/examinations' },
-    { label: 'Marks', icon: 'M', route: '/management/marks' },
-    { label: 'Grades', icon: 'G', route: '/management/grades' },
-    { label: 'Results', icon: 'R', route: '/management/results' },
-    { label: 'Report Cards', icon: 'C', route: '/management/report-cards' },
-    { label: 'Fee Categories', icon: 'F', route: '/management/fee-categories' },
-    { label: 'Fee Structures', icon: 'F', route: '/management/fee-structures' },
-    { label: 'Student Fees', icon: 'F', route: '/management/student-fees' },
-    { label: 'Installments', icon: 'I', route: '/management/installments' },
-    { label: 'Fee Collection', icon: '₹', route: '/management/fee-collections' },
-    { label: 'Receipts', icon: 'R', route: '/management/receipts' },
-    { label: 'Discounts', icon: 'D', route: '/management/discounts' },
-    { label: 'Scholarships', icon: 'S', route: '/management/scholarships' },
-    { label: 'Expenses', icon: 'E', route: '/management/expenses' },
-    { label: 'Accounts', icon: 'A', route: '/management/accounts' },
-    { label: 'HR', icon: 'H', route: '/management/hr' },
-    { label: 'Payroll', icon: 'P', route: '/management/payroll' },
-    { label: 'Library', icon: '▤', route: '/management/library' },
-    { label: 'Transport', icon: 'T', route: '/management/transport' },
-    { label: 'Inventory', icon: 'I', route: '/management/inventory' },
-    { label: 'Assets', icon: 'A', route: '/management/assets' },
-    { label: 'Communication', icon: '◉', route: '/management/communication' },
-    { label: 'Documents', icon: 'D', route: '/management/documents' },
-    { label: 'Reports', icon: '≡', route: '/management/reports' },
-    { label: 'Tenants', icon: 'T', route: '/management/tenants' },
-    { label: 'Subscription Plans', icon: 'P', route: '/management/subscription-plans' },
-    { label: 'Subscriptions', icon: 'S', route: '/management/subscriptions' },
-    { label: 'Billing', icon: 'B', route: '/management/billing' },
-    { label: 'Usage', icon: 'U', route: '/management/usage' },
-    { label: 'Platform Configuration', icon: '⚙', route: '/management/platform-configuration' },
-    { label: 'Settings', icon: '⚙', route: '/settings' },
+  readonly groups: NavGroup[] = [
+    {
+      label: 'School management',
+      icon: '⌂',
+      children: [
+        { label: 'Schools', icon: '⌂', route: '/management/schools', permission: 'schools.view' },
+        { label: 'Branches', icon: '◇', route: '/management/branches', permission: 'branches.view' },
+        { label: 'Academic sessions', icon: '◷', route: '/management/academic-sessions', permission: 'academic-sessions.view' },
+      ],
+    },
+    {
+      label: 'People',
+      icon: '◎',
+      children: [
+        { label: 'Students', icon: '◎', route: '/management/students', permission: 'students.view' },
+        { label: 'Parents & guardians', icon: '♙', route: '/management/parents', permission: 'parents.view' },
+        { label: 'Staff', icon: '♧', route: '/management/staff', permission: 'staff.view' },
+        { label: 'Users', icon: 'U', route: '/management/users', permission: 'users.view' },
+        { label: 'Roles', icon: 'R', route: '/management/roles', permission: 'roles.view' },
+        { label: 'Permissions', icon: 'P', route: '/management/permissions', permission: 'permissions.view' },
+      ],
+    },
+    {
+      label: 'Academics',
+      icon: 'A',
+      children: [
+        { label: 'Classes', icon: 'C', route: '/management/classes', permission: 'classes.view' },
+        { label: 'Sections', icon: 'S', route: '/management/sections', permission: 'sections.view' },
+        { label: 'Subjects', icon: 'J', route: '/management/subjects', permission: 'subjects.view' },
+        { label: 'Teacher assignments', icon: 'T', route: '/management/teacher-assignments', permission: 'teacher-assignments.view' },
+        { label: 'Timetables', icon: '◷', route: '/management/timetables', permission: 'timetables.view' },
+      ],
+    },
+    {
+      label: 'Attendance',
+      icon: '✓',
+      children: [
+        { label: 'Student attendance', icon: '✓', route: '/management/attendance', permission: 'attendance.view' },
+      ],
+    },
+    {
+      label: 'Examinations',
+      icon: '✎',
+      children: [
+        { label: 'Examinations', icon: 'E', route: '/management/examinations', permission: 'examinations.view' },
+        { label: 'Marks', icon: 'M', route: '/management/marks', permission: 'marks.view' },
+        { label: 'Grades', icon: 'G', route: '/management/grades', permission: 'grades.view' },
+        { label: 'Results', icon: 'R', route: '/management/results', permission: 'results.view' },
+        { label: 'Report cards', icon: 'C', route: '/management/report-cards', permission: 'report-cards.view' },
+      ],
+    },
+    {
+      label: 'Fees & finance',
+      icon: '$',
+      children: [
+        { label: 'Fee categories', icon: 'F', route: '/management/fee-categories', permission: 'fee-categories.view' },
+        { label: 'Fee structures', icon: 'F', route: '/management/fee-structures', permission: 'fee-structures.view' },
+        { label: 'Student fees', icon: 'F', route: '/management/student-fees', permission: 'student-fees.view' },
+        { label: 'Installments', icon: 'I', route: '/management/installments', permission: 'installments.view' },
+        { label: 'Fee collection', icon: '$', route: '/management/fee-collections', permission: 'fee-collections.view' },
+        { label: 'Receipts', icon: 'R', route: '/management/receipts', permission: 'receipts.view' },
+        { label: 'Discounts', icon: 'D', route: '/management/discounts', permission: 'discounts.view' },
+        { label: 'Scholarships', icon: 'S', route: '/management/scholarships', permission: 'scholarships.view' },
+        { label: 'Expenses', icon: '−', route: '/management/expenses', permission: 'expenses.view' },
+        { label: 'Accounts', icon: 'A', route: '/management/accounts', permission: 'accounts.view' },
+      ],
+    },
+    {
+      label: 'Operations',
+      icon: '◈',
+      children: [
+        { label: 'HR & leave', icon: 'H', route: '/management/hr', permission: 'hr.view' },
+        { label: 'Payroll', icon: 'P', route: '/management/payroll', permission: 'payroll.view' },
+        { label: 'Library', icon: '▤', route: '/management/library', permission: 'library.view' },
+        { label: 'Transport', icon: 'T', route: '/management/transport', permission: 'transport.view' },
+        { label: 'Inventory', icon: 'I', route: '/management/inventory', permission: 'inventory.view' },
+        { label: 'Assets', icon: 'A', route: '/management/assets', permission: 'assets.view' },
+        { label: 'Communication', icon: '◉', route: '/management/communication', permission: 'communication.view' },
+        { label: 'Documents', icon: 'D', route: '/management/documents', permission: 'documents.view' },
+        { label: 'Reports', icon: '≡', route: '/management/reports', permission: 'reports.view' },
+      ],
+    },
+    {
+      label: 'SaaS administration',
+      icon: '◉',
+      children: [
+        { label: 'Tenants', icon: 'T', route: '/management/tenants', permission: 'tenants.view' },
+        { label: 'Subscription plans', icon: 'P', route: '/management/subscription-plans', permission: 'subscription-plans.view' },
+        { label: 'Subscriptions', icon: 'S', route: '/management/subscriptions', permission: 'subscriptions.view' },
+        { label: 'Billing', icon: 'B', route: '/management/billing', permission: 'billing.view' },
+        { label: 'Usage', icon: 'U', route: '/management/usage', permission: 'usage.view' },
+        { label: 'Platform configuration', icon: '⚙', route: '/management/platform-configuration', permission: 'platform-configuration.view' },
+      ],
+    },
   ];
+
+  ngOnInit(): void {
+    this.router.events
+      .pipe(filter((event) => event instanceof NavigationEnd), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.expandActiveGroup());
+    this.expandActiveGroup();
+  }
+
+  visibleGroups(): NavGroup[] {
+    return this.groups
+      .map((group) => ({
+        ...group,
+        children: group.children.filter((item) => !item.permission || this.permissions.has(item.permission)),
+      }))
+      .filter((group) => group.children.length > 0);
+  }
+
+  isExpanded(label: string): boolean {
+    return this.expandedGroups().has(label);
+  }
+
+  toggleGroup(label: string): void {
+    this.expandedGroups.update((groups) => {
+      const next = new Set(groups);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  }
+
+  private expandActiveGroup(): void {
+    const activeGroup = this.visibleGroups().find((group) =>
+      group.children.some((item) => this.router.url.startsWith(item.route)),
+    );
+    if (activeGroup) this.expandedGroups.update((groups) => new Set([...groups, activeGroup.label]));
+  }
 }

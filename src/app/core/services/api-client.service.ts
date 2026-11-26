@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, timeout } from 'rxjs';
+import { Observable, TimeoutError, catchError, throwError, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../models/api.models';
 import { ApiErrorService } from './api-error.service';
@@ -53,8 +53,19 @@ export class ApiClientService {
 
     return response.pipe(
       timeout(environment.apiTimeoutMs),
-      catchError((error: HttpErrorResponse) => {
-        throw this.errorHandler.fromHttpError(error);
+      catchError((error: unknown) => {
+        if (error instanceof HttpErrorResponse) {
+          return throwError(() => this.errorHandler.fromHttpError(error));
+        }
+        if (error instanceof TimeoutError) {
+          return throwError(() => ({
+            status: 0,
+            message: 'The request timed out. Please try again.',
+            validationErrors: {},
+            retryable: true,
+          }));
+        }
+        return throwError(() => error);
       }),
     );
   }

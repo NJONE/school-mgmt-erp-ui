@@ -11,7 +11,7 @@ import { TopbarComponent } from '../topbar/topbar.component';
       <app-sidebar class="desktop-sidebar" [collapsed]="collapsed()" />
       @if (mobileOpen()) {
         <button class="backdrop" type="button" aria-label="Close navigation" (click)="mobileOpen.set(false)"></button>
-        <app-sidebar class="mobile-sidebar" [collapsed]="false" />
+      <app-sidebar class="mobile-sidebar" [collapsed]="false" (closeMobile)="mobileOpen.set(false)" />
       }
       <div class="workspace">
         <app-topbar (toggleSidebar)="toggleNavigation()" />

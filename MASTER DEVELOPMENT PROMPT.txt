@@ -228,6 +228,42 @@ src/
 
 ---
 
+## Project-structure feature completeness
+
+Treat every directory and capability in the structure above as an architectural responsibility, not as permission to create empty folders or placeholder screens. Inspect the repository first, reuse working code, and organize each implemented capability in the closest existing feature area. A feature is not complete merely because its route, navigation item, or component exists.
+
+Implement and maintain the following responsibilities:
+
+- **Core:** authentication and session lifecycle; route guards; HTTP interceptors; typed shared models; environment and endpoint configuration; constants; permission checks; tenant, school, branch, and academic-session context; and application state.
+- **Shared:** reusable, accessible page headers, loading/empty/error states, confirmation dialogs, search and filter controls, status badges, avatars, upload controls, breadcrumbs, notifications, tables, pagination, form controls, dynamic forms/filters/tables, lookups, date selection, rich text, and export actions. Components must expose typed inputs/outputs and must not own feature-specific API calls.
+- **Layout:** authenticated application shell, responsive sidebar and mobile navigation, topbar, footer, and breadcrumbs. Navigation must reflect the current context and permissions.
+- **Features:** deliver the capabilities below as working, navigable modules; detailed entity lists and workflows are specified in Sections 18–27.
+  - `dashboard`: role-aware operational overview, useful metrics, charts, activity, and navigation to permitted work.
+  - `school-management` and `branch-management`: school/branch records, settings, branding, and context-aware selection.
+  - `student-management` and `parent-management`: admissions, student and guardian records, relationships, documents, and student lifecycle workflows.
+  - `staff-management` and `hr-management`: staff records, departments, qualifications, leave, attendance, payroll, and payslips.
+  - `user-management` and `role-management`: users, roles, permissions, and assignment workflows with permission-aware actions.
+  - `academic-management`: academic sessions, classes, sections, subjects, assignments, timetables, curriculum, homework, and promotions.
+  - `attendance-management` and `examination-management`: attendance capture/corrections/reports; exam scheduling, marks, grading, results, and report cards.
+  - `fee-management` and `finance-management`: fee setup and collection, installments, receipts, discounts/refunds, accounts, income, expenses, and transactions.
+  - `library-management`, `transport-management`, `inventory-management`, and asset capabilities: manage their records and workflows, including issue/return, route assignment, stock movement, and asset maintenance where applicable.
+  - `communication`: announcements, notifications, templates, threads, and messages.
+  - `document-management`: categorized files, templates, uploads, access controls, and generated documents.
+  - `reports`: filterable, permission-aware reports with supported export options and clear empty/error states.
+  - `settings`: accessible school/platform settings appropriate to the signed-in role; do not expose platform-only configuration to school users.
+  - `subscription-management`: tenant subscriptions, plans, billing, usage, and feature configuration for authorized SaaS administrators.
+- **Metadata:** keep entity, form, table, filter, navigation, and permission metadata typed, cohesive, and registered centrally. Metadata describes presentation and API mapping; it must not replace domain rules or authorization.
+- **Services:** centralize HTTP/API configuration, entity operations, lookups, notifications, exports, and uploads in typed services. Components consume these services rather than calling HTTP directly.
+- **Models, routes, and application configuration:** define shared contracts once, lazy-load feature routes where appropriate, protect routes and actions, and register application-wide providers centrally.
+
+### Definition of done for every feature
+
+For each feature in the structure, provide the relevant screens and workflows—not just a module shell—with working navigation and actions, validated forms, list/detail behavior as appropriate, permission checks, responsive and accessible UI, and loading, empty, success, and error feedback. Connect to verified backend contracts. If a required backend capability is absent, document the exact gap and do not simulate success with permanent mock data.
+
+Maintain a feature-to-route-to-API-to-test traceability checklist as implementation proceeds. Mark a feature complete only when its required workflows are implemented, its API mapping is verified or its dependency is explicitly documented as blocked, focused tests pass, and the application builds. Do not mark an entire module complete when only some of its entities or workflows are implemented.
+
+---
+
 # 4. PROFESSIONAL UI DESIGN SYSTEM
 
 Design a modern SaaS ERP UI.

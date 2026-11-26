@@ -30,6 +30,7 @@ interface LoginForm {
           <div class="mobile-brand"><span class="brand-mark">E</span><strong>EduCore</strong></div>
           <h2>Welcome back</h2>
           <p class="subtitle">Sign in to continue to your workspace</p>
+          @if (auth.logoutWarning()) { <div class="form-warning" role="status">{{ auth.logoutWarning() }}</div> }
           @if (error()) { <div class="form-error" role="alert">{{ error() }}</div> }
           <label>Email or username
             <input type="text" formControlName="email" autocomplete="username" placeholder="name@school.edu or username" />

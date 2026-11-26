@@ -9,6 +9,7 @@ export type FieldType =
   | 'boolean'
   | 'date'
   | 'datetime'
+  | 'url'
   | 'lookup';
 
 export interface FieldOption {
@@ -35,6 +36,7 @@ export interface FieldMetadata {
   filterable?: boolean;
   inTable?: boolean;
   inForm?: boolean;
+  section?: string;
   placeholder?: string;
   options?: FieldOption[];
   lookup?: LookupMetadata;

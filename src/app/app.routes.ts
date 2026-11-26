@@ -22,6 +22,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
       },
       {
+        path: 'settings',
+        loadComponent: () => import('./features/settings/settings.component').then((m) => m.SettingsComponent),
+      },
+      {
         path: 'management/:entity',
         canActivate: [permissionGuard],
         loadComponent: () => import('./features/dynamic-management.component').then((m) => m.DynamicManagementComponent),
@@ -33,7 +37,6 @@ export const routes: Routes = [
       { path: 'transport', redirectTo: 'management/transport', pathMatch: 'full' },
       { path: 'communication', redirectTo: 'management/communication', pathMatch: 'full' },
       { path: 'reports', redirectTo: 'management/reports', pathMatch: 'full' },
-      { path: 'settings', redirectTo: 'management/platform-configuration', pathMatch: 'full' },
     ],
   },
   { path: '**', redirectTo: 'dashboard' },

@@ -1,6 +1,6 @@
 # School Management ERP UI
 
-Angular 22 standalone frontend for the School Management ERP platform.
+Angular 22 standalone frontend for a multi-tenant School Management ERP.
 
 ## Development
 
@@ -9,85 +9,31 @@ npm install
 npm start
 ```
 
-The application uses a configurable API base URL:
+Configure the API base URL in `src/environments/environment.development.ts` and `src/environments/environment.production.ts`. Endpoint paths are centralized in `src/app/core/config/api-endpoints.ts`.
 
-- Development: `src/environments/environment.development.ts`
-- Production: `src/environments/environment.production.ts`
-- Central endpoints: `src/app/core/config/api-endpoints.ts`
+## Implemented UI
 
-## Phase 1 and 2 status
+- Responsive application shell with grouped, permission-filtered navigation, tenant/school/branch/academic-session selectors, system/light/dark themes, global record search, notifications, and account actions.
+- Dashboard with context-scoped student, staff, attendance, and fee-record counts, recent admissions, permission-aware quick actions, and explicit unavailable/restricted states.
+- Reusable metadata-driven list/detail/form screens for every entity currently registered in `EntityMetadataRegistry`.
+- CRUD screens support server search, filters, sorting, pagination/page size, column visibility, row selection, permission-gated actions, confirmed deletion, CSV/JSON export, and API-backed import.
+- Dynamic forms support validation, lookup loading/error states, and sections. Student forms use the personal, admission, parent, contact, medical, transport, documents, and additional-information sections.
+- Shared feedback, status-badge, and confirmation-dialog components; a Preferences page provides theme selection and the backend-backed change-password workflow.
+- Login, forgot-password request, session-aware routing, permission checks, tenant context headers, centralized API error handling, and responsive layouts.
 
-Implemented:
+## Feature coverage and backend limitations
 
-- Standalone Angular routing and strict TypeScript configuration
-- Responsive ERP shell with sidebar, topbar, mobile navigation, and theme switching
-- Reactive login screen
-- JWT auth state, login/logout API, auth guard, permission guard, and HTTP interceptors
-- Tenant, school, branch, and academic-session signal context
-- Central API client and centralized HTTP error mapping
-- Lazy-loaded dashboard and management route shells
-- Unauthorized and backend-integration placeholder states
+School, people, academic, attendance, examination, finance, HR/payroll, library, transport, inventory/assets, communication, documents, reports, and SaaS administration records are available through the shared CRUD engine when their metadata is registered.
 
-## Phase 3 and 4 status
+The `school-mgmt-erp-service` repository is not available in this workspace. Therefore, endpoint paths, request/response DTOs, filters, permissions, and pagination assumptions have not been verified. In particular, several prompt workflows (for example student promotion/transfer, staff leave workflows, library issue/return, transport assignments, purchase orders, and report generation) need their actual backend routes and contracts before they can be safely implemented as operational actions. The current generic screens must not be treated as proof that those workflows are complete.
 
-Implemented:
+The student tab fields, dashboard filters, global-search categories, notification list shape, and import/export endpoints also require verification against the service. File upload, import preview/template validation, server-side export, notification read actions, and specialized domain workflows are not implemented until the required contracts are known. No successful API response is mocked.
 
-- Metadata types and entity metadata registry
-- Field, form, table, filter, and relationship metadata
-- Dynamic form, table, filter, and lookup engines
-- Generic CRUD engine for list, search, filters, sorting, pagination, create, edit, details, delete, bulk delete, import, and CSV/JSON export
-- Dynamic management route replacing placeholder screens
+See [docs/API-INTEGRATION.md](docs/API-INTEGRATION.md) for the current assumptions and integration checklist.
 
-## Phase 5 status
+## Verification
 
-Implemented metadata-driven management screens for:
-
-- Schools
-- Branches
-- Academic sessions
-- Classes
-- Sections
-- Subjects
-- Students
-- Parents
-- Staff
-- Users
-- Roles
-- Permissions
-
-The backend repository was not available in this workspace. The module endpoints are centralized and should be verified against the actual service route definitions before production use.
-
-## Phase 6 and 7 status
-
-Implemented metadata-driven screens for academic and finance modules:
-
-- Teacher assignments, timetable, attendance
-- Examinations, marks, grades, results, report cards
-- Fee categories, fee structures, student fees
-- Installments, fee collection, receipts
-- Discounts, scholarships, expenses, accounts
-
-## Phase 8 and 9 status
-
-Implemented metadata-driven screens for:
-
-- HR and payroll
-- Library, transport, inventory, assets
-- Communication, documents, reports
-- Tenant management, subscription plans, subscriptions
-- Billing, usage, platform configuration
-
-## Backend integration
-
-The `school-mgmt-erp-service` repository is not available in this workspace. The frontend uses the documented `/api/v1` endpoint structure, but no route or response contract has been verified.
-
-Before Phase 3 or module integration, verify:
-
-- Authentication routes and DTOs
-- Pagination format
-- Lookup endpoints
-- Upload endpoints
-- Validation error shape
-- School, branch, and tenant headers or query parameters
-
-Full details are in [docs/API-INTEGRATION.md](docs/API-INTEGRATION.md).
+```bash
+npm test -- --watch=false
+npm run build
+```

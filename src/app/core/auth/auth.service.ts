@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
-import { AuthTokens, AuthUser, LoginRequest } from '../models/auth.models';
+import { Observable, finalize, tap } from 'rxjs';
+import { AuthTokens, AuthUser, LoginRequest, LoginResponse } from '../models/auth.models';
 import { AuthApiService } from './auth-api.service';
 
 const ACCESS_TOKEN_KEY = 'erp.accessToken';
@@ -17,35 +17,42 @@ export class AuthService {
 
   readonly user = this.userSignal.asReadonly();
   readonly loading = this.loadingSignal.asReadonly();
+  readonly logoutWarning = signal('');
   readonly isAuthenticated = computed(() => this.userSignal() !== null || !!this.accessToken);
 
   get accessToken(): string | null {
-    return localStorage.getItem(ACCESS_TOKEN_KEY);
+    return this.storage()?.getItem(ACCESS_TOKEN_KEY) ?? null;
   }
 
-  login(request: LoginRequest): Observable<unknown> {
+  login(request: LoginRequest): Observable<LoginResponse> {
     this.loadingSignal.set(true);
+    this.logoutWarning.set('');
     return this.api.login(request).pipe(
-      tap({
-        next: (response: any) => {
-          this.storeSession(response.data.identity, response.data);
-          this.loadingSignal.set(false);
-        },
-        error: () => this.loadingSignal.set(false),
-      }),
+      tap((response) => this.storeSession(response.data.user, response.data.tokens)),
+      finalize(() => this.loadingSignal.set(false)),
     );
   }
 
   logout(): void {
-    this.api.logout().subscribe({ complete: () => undefined, error: () => undefined });
+    this.api.logout().subscribe({
+      error: (error: unknown) => {
+        const detail = typeof error === 'object' && error !== null && 'message' in error
+          ? String(error['message'])
+          : '';
+        this.logoutWarning.set(detail
+          ? `You are signed out on this device, but the service could not invalidate the remote session: ${detail}`
+          : 'You are signed out on this device, but the service could not invalidate the remote session.');
+      },
+    });
     this.clearSession();
     void this.router.navigate(['/login']);
   }
 
   clearSession(): void {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    const storage = this.storage();
+    storage?.removeItem(ACCESS_TOKEN_KEY);
+    storage?.removeItem(REFRESH_TOKEN_KEY);
+    storage?.removeItem(USER_KEY);
     this.userSignal.set(null);
   }
 
@@ -53,21 +60,28 @@ export class AuthService {
     return this.userSignal()?.permissions.includes(permission) === true;
   }
 
-  storeSession(user: AuthUser, tokens: AuthTokens): void {   
-    localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
-    if (tokens.refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  storeSession(user: AuthUser, tokens: AuthTokens): void {
+    const storage = this.storage();
+    storage?.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+    if (tokens.refreshToken) storage?.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+    else storage?.removeItem(REFRESH_TOKEN_KEY);
+    storage?.setItem(USER_KEY, JSON.stringify(user));
     this.userSignal.set(user);
   }
 
   private readUser(): AuthUser | null {
-    const raw = localStorage.getItem(USER_KEY);
+    const storage = this.storage();
+    const raw = storage?.getItem(USER_KEY);
     if (!raw) return null;
     try {
       return JSON.parse(raw) as AuthUser;
     } catch {
-      localStorage.removeItem(USER_KEY);
+      storage?.removeItem(USER_KEY);
       return null;
     }
+  }
+
+  private storage(): Storage | undefined {
+    return typeof localStorage === 'undefined' ? undefined : localStorage;
   }
 }

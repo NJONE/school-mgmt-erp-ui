@@ -1,12 +1,14 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, map, of } from 'rxjs';
+import { Observable, map, of } from 'rxjs';
 import { ApiEnvelope, PaginatedData } from '../models/api.models';
 import { ApiClientService } from '../services/api-client.service';
+import { TenantContextService } from '../tenant/tenant-context.service';
 import { LookupMetadata, LookupOption } from './metadata.models';
 
 @Injectable({ providedIn: 'root' })
 export class LookupEngine {
   private readonly api = inject(ApiClientService);
+  private readonly context = inject(TenantContextService);
   private readonly cache = new Map<string, LookupOption[]>();
 
   search(metadata: LookupMetadata, term = ''): Observable<LookupOption[]> {
@@ -14,7 +16,7 @@ export class LookupEngine {
       ...(metadata.params ?? {}),
       ...(term ? { [metadata.searchParam ?? 'search']: term } : {}),
     };
-    const cacheKey = `${metadata.endpoint}:${JSON.stringify(params)}`;
+    const cacheKey = `${metadata.endpoint}:${this.context.tenantId() ?? ''}:${this.context.schoolId() ?? ''}:${this.context.branchId() ?? ''}:${this.context.academicSessionId() ?? ''}:${JSON.stringify(params)}`;
     const cached = this.cache.get(cacheKey);
     if (cached) return of(cached);
 
@@ -27,7 +29,6 @@ export class LookupEngine {
         this.cache.set(cacheKey, options);
         return options;
       }),
-      catchError(() => of([])),
     );
   }
 
@@ -43,17 +44,21 @@ export class LookupEngine {
     data: PaginatedData<Record<string, unknown>> | Record<string, unknown>[] | unknown,
     metadata: LookupMetadata,
   ): LookupOption[] {
-    const rows = Array.isArray(data)
-      ? data
-      : typeof data === 'object' && data !== null && 'items' in data
-        ? (data as PaginatedData<Record<string, unknown>>).items
-        : [];
+    let rows: Record<string, unknown>[];
+    if (Array.isArray(data)) {
+      rows = data;
+    } else if (typeof data === 'object' && data !== null && 'items' in data && Array.isArray(data['items'])) {
+      rows = data['items'] as Record<string, unknown>[];
+    } else {
+      throw new Error('The service returned lookup data in an unsupported format.');
+    }
     const labelField = metadata.labelField ?? 'name';
     const valueField = metadata.valueField ?? 'id';
-    return rows.map((row) => ({
-      label: String(row[labelField] ?? row.name ?? row.label ?? ''),
-      value: row[valueField] as string | number | boolean,
-      data: row,
-    }));
+    return rows.flatMap((row) => {
+      const value = row[valueField];
+      if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') return [];
+      const label = String(row[labelField] ?? row['name'] ?? row['label'] ?? '');
+      return label ? [{ label, value, data: row }] : [];
+    });
   }
 }

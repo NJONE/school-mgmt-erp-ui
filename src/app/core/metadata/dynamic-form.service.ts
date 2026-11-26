@@ -13,6 +13,7 @@ export class DynamicFormEngine {
       if (field.maxLength) validators.push(Validators.maxLength(field.maxLength));
       if (field.pattern) validators.push(Validators.pattern(field.pattern));
       if (field.type === 'email') validators.push(Validators.email);
+      if (field.type === 'url') validators.push(Validators.pattern(/^https?:\/\/.+/i));
       if (field.type === 'number') validators.push(Validators.min(field.min ?? 0), Validators.max(field.max ?? Number.MAX_SAFE_INTEGER));
       const controlValue = value[field.key] ?? field.defaultValue ?? '';
       controls[field.key] = field.readonly

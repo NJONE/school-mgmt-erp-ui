@@ -24,7 +24,7 @@ export class CrudEngine {
   }
 
   search<T extends Record<string, unknown>>(entity: EntityMetadata, term: string, query: Partial<CrudQuery> = {}): Observable<CrudPage<T>> {
-    return this.list<T>(entity, { page: query.page ?? 1, limit: query.limit ?? 10, search: term, ...query });
+    return this.list<T>(entity, { ...query, page: query.page ?? 1, limit: query.limit ?? 10, search: term });
   }
 
   create<T>(entity: EntityMetadata, body: unknown): Observable<T> {
@@ -85,29 +85,38 @@ export class CrudEngine {
       };
     }
     if (typeof data === 'object' && data !== null) {
-      const paginated = data as {
-        items?: T[];
-        data?: T[];
-        results?: T[];
-        pagination?: Partial<CrudPage<T>['pagination']>;
-        meta?: Partial<CrudPage<T>['pagination']>;
-      };
-      const items = paginated.items ?? paginated.data ?? paginated.results ?? [];
-      const pagination = paginated.pagination ?? paginated.meta ?? {};
+      const paginated = data as Record<string, unknown>;
+      const rawItems = paginated['items'] ?? paginated['data'] ?? paginated['results'];
+      if (!Array.isArray(rawItems)) {
+        throw new Error('The service returned a list response in an unsupported format.');
+      }
+      const items = rawItems as T[];
+      const rawPagination = paginated['pagination'] ?? paginated['meta'];
+      const pagination = typeof rawPagination === 'object' && rawPagination !== null
+        ? rawPagination as Record<string, unknown>
+        : {};
+      const page = this.positiveNumberOr(pagination['page'], query.page);
+      const limit = this.positiveNumberOr(pagination['limit'], query.limit);
+      const total = this.nonNegativeNumberOr(pagination['total'], items.length);
       return {
         items,
         pagination: {
-          page: pagination.page ?? query.page,
-          limit: pagination.limit ?? query.limit,
-          total: pagination.total ?? items.length,
-          totalPages: pagination.totalPages ?? Math.max(1, Math.ceil((pagination.total ?? items.length) / (pagination.limit ?? query.limit))),
+          page,
+          limit,
+          total,
+          totalPages: this.positiveNumberOr(pagination['totalPages'], Math.max(1, Math.ceil(total / limit))),
         },
       };
     }
-    return {
-      items: [],
-      pagination: { page: query.page, limit: query.limit, total: 0, totalPages: 1 },
-    };
+    throw new Error('The service returned a list response in an unsupported format.');
+  }
+
+  private positiveNumberOr(value: unknown, fallback: number): number {
+    return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
+  }
+
+  private nonNegativeNumberOr(value: unknown, fallback: number): number {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
   }
 
   private toCsv(rows: Array<Record<string, unknown>>): string {
