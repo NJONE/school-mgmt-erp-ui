@@ -18,6 +18,31 @@ export class TenantContextService {
   readonly academicSessions = signal<ContextOption[]>([]);
   readonly revision = signal(0);
 
+  syncIdentityScope(scope: {
+    tenantId?: string | null;
+    schoolId?: string | null;
+    branchId?: string | null;
+    academicSessionId?: string | null;
+  } | null): void {
+    const tenantId = scope?.tenantId ?? null;
+    const schoolId = scope?.schoolId ?? null;
+    const branchId = scope?.branchId ?? null;
+    const academicSessionId = scope?.academicSessionId ?? null;
+    this.tenantId.set(tenantId);
+    this.schoolId.set(schoolId);
+    this.branchId.set(branchId);
+    this.academicSessionId.set(academicSessionId);
+    this.persist('erp.tenantId', tenantId);
+    this.persist('erp.schoolId', schoolId);
+    this.persist('erp.branchId', branchId);
+    this.persist('erp.academicSessionId', academicSessionId);
+    this.tenants.set([]);
+    this.schools.set([]);
+    this.branches.set([]);
+    this.academicSessions.set([]);
+    this.changed();
+  }
+
   setTenant(id: string | null): void {
     this.tenantId.set(id);
     this.persist('erp.tenantId', id);

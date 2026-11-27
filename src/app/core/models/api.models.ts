@@ -2,6 +2,7 @@ export interface ApiEnvelope<T> {
   success: boolean;
   data: T;
   message?: string;
+  meta?: Record<string, unknown>;
 }
 
 export interface PaginatedData<T> {

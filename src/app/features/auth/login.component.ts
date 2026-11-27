@@ -2,7 +2,6 @@ import { Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
-import { AuthApiService } from '../../core/auth/auth-api.service';
 import { ApiError } from '../../core/models/api.models';
 
 interface LoginForm {
@@ -43,12 +42,11 @@ interface LoginForm {
           </label>
           <div class="form-row">
             <label class="checkbox"><input type="checkbox" formControlName="rememberMe" /> <span>Remember me</span></label>
-            <button type="button" class="text-button" (click)="forgotPassword()">Forgot password?</button>
           </div>
           <button class="primary-button" type="submit" [disabled]="form.invalid || auth.loading()">
             {{ auth.loading() ? 'Signing in…' : 'Sign in' }}
           </button>
-          <p class="support">Need access? Contact your school administrator.</p>
+          <p class="support">For access or password help, contact your school administrator.</p>
         </form>
       </section>
     </div>
@@ -61,7 +59,6 @@ export class LoginComponent {
   private readonly route = inject(ActivatedRoute);
   readonly showPassword = signal(false);
   readonly error = signal<string | null>(null);
-  private readonly authApi = inject(AuthApiService);
 
   readonly form = new FormGroup<LoginForm>({
     email: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -84,17 +81,4 @@ export class LoginComponent {
     });
   }
 
-  forgotPassword(): void {
-    const email = this.form.controls.email.value.trim();
-    if (!email) {
-      this.form.controls.email.markAsTouched();
-      this.error.set('Enter your email or username first.');
-      return;
-    }
-    this.error.set(null);
-    this.authApi.forgotPassword(email).subscribe({
-      next: () => this.error.set('If an account exists, password reset instructions will be sent.'),
-      error: (apiError: ApiError) => this.error.set(apiError.message),
-    });
-  }
 }

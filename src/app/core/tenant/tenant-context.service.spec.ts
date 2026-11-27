@@ -29,4 +29,29 @@ describe('TenantContextService', () => {
     expect(context.academicSessions()).toEqual([]);
     expect(context.revision()).toBeGreaterThan(revision);
   });
+
+  it('synchronizes persisted workspace scope from the authenticated identity', () => {
+    const context = TestBed.inject(TenantContextService);
+    context.setTenant('stale-tenant');
+    context.schools.set([{ id: 'stale-school', name: 'Stale School' }]);
+
+    context.syncIdentityScope({
+      tenantId: 'identity-tenant',
+      schoolId: 'identity-school',
+      branchId: 'identity-branch',
+      academicSessionId: 'identity-session',
+    });
+
+    expect(context.tenantId()).toBe('identity-tenant');
+    expect(context.schoolId()).toBe('identity-school');
+    expect(context.branchId()).toBe('identity-branch');
+    expect(context.academicSessionId()).toBe('identity-session');
+    expect(context.schools()).toEqual([]);
+    expect(localStorage.getItem('erp.schoolId')).toBe('identity-school');
+
+    context.syncIdentityScope(null);
+    expect(context.tenantId()).toBeNull();
+    expect(context.schoolId()).toBeNull();
+    expect(localStorage.getItem('erp.schoolId')).toBeNull();
+  });
 });

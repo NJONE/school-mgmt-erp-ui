@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, WritableSignal, computed, inject, output, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
@@ -81,25 +81,8 @@ interface NotificationItem {
             </div>
           }
         </div>
-        <div class="context-selectors">
-          @if (canSelectTenant()) {
-            <select aria-label="Tenant" (change)="selectTenant($event)" [value]="context.tenantId() ?? ''">
-              <option value="">All tenants</option>
-              @for (tenant of context.tenants(); track tenant.id) { <option [value]="tenant.id">{{ tenant.name }}</option> }
-            </select>
-          }
-          <select aria-label="School" (change)="selectSchool($event)" [value]="context.schoolId() ?? ''">
-            <option value="">All schools</option>
-            @for (school of context.schools(); track school.id) { <option [value]="school.id">{{ school.name }}</option> }
-          </select>
-          <select aria-label="Branch" [disabled]="!context.schoolId()" (change)="context.setBranch(selectValue($event))" [value]="context.branchId() ?? ''">
-            <option value="">All branches</option>
-            @for (branch of context.branches(); track branch.id) { <option [value]="branch.id">{{ branch.name }}</option> }
-          </select>
-          <select aria-label="Academic session" (change)="context.setAcademicSession(selectValue($event))" [value]="context.academicSessionId() ?? ''">
-            <option value="">All sessions</option>
-            @for (session of context.academicSessions(); track session.id) { <option [value]="session.id">{{ session.name }}</option> }
-          </select>
+        <div class="scope-summary" aria-label="Account data scope">
+          <span>Scope</span><strong>{{ scopeSummary() }}</strong>
         </div>
         <button class="icon-button" type="button" [attr.aria-label]="isDark() ? 'Switch to light theme' : 'Switch to dark theme'" (click)="toggleTheme()">
           {{ isDark() ? '☼' : '◐' }}
@@ -145,7 +128,6 @@ interface NotificationItem {
         </div>
       </div>
     </header>
-    @if (contextError()) { <div class="context-error" role="status">{{ contextError() }}</div> }
   `,
   styleUrl: './topbar.scss',
 })
@@ -162,13 +144,11 @@ export class TopbarComponent implements OnInit {
   readonly notifications = signal<NotificationItem[]>([]);
   readonly notificationLoading = signal(false);
   readonly notificationError = signal('');
-  readonly contextError = signal('');
   readonly theme = inject(ThemeService);
   readonly isDark = this.theme.isDark;
   readonly unreadCount = computed(() => this.notifications().filter((item) => item.unread).length);
   readonly searchTerms = new Subject<string>();
   readonly auth = inject(AuthService);
-  readonly context = inject(TenantContextService);
   private readonly api = inject(ApiClientService);
   private readonly crud = inject(CrudEngine);
   private readonly registry = inject(EntityMetadataRegistry);
@@ -184,6 +164,10 @@ export class TopbarComponent implements OnInit {
         this.closeSearch();
       });
     this.updateTitle();
+    this.registry.loadFromBackend(this.api).subscribe({
+      next: () => this.updateTitle(),
+      error: () => undefined,
+    });
 
     this.searchTerms.pipe(
       map((term) => term.trim()),
@@ -193,11 +177,6 @@ export class TopbarComponent implements OnInit {
       takeUntilDestroyed(this.destroyRef),
     ).subscribe((results) => this.searchResults.set(results));
 
-    if (this.canSelectTenant()) this.loadOptions(API_ENDPOINTS.tenants, this.context.tenants);
-    this.loadOptions(API_ENDPOINTS.schools, this.context.schools, this.tenantParams());
-    this.loadAcademicSessions();
-    const schoolId = this.context.schoolId();
-    if (schoolId) this.loadBranches(schoolId);
   }
 
   initials(): string {
@@ -209,31 +188,17 @@ export class TopbarComponent implements OnInit {
     return this.auth.user()?.roles[0]?.replaceAll('_', ' ') ?? 'Member';
   }
 
-  selectValue(event: Event): string | null {
-    return (event.target as HTMLSelectElement).value || null;
-  }
-
   toggleTheme(): void {
     this.theme.toggle();
   }
 
-  selectSchool(event: Event): void {
-    const schoolId = this.selectValue(event);
-    this.context.setSchool(schoolId);
-    if (schoolId) this.loadBranches(schoolId);
-    this.loadAcademicSessions(schoolId);
-  }
-
-  selectTenant(event: Event): void {
-    const tenantId = this.selectValue(event);
-    this.context.setTenant(tenantId);
-    const params = this.tenantParams();
-    this.loadOptions(API_ENDPOINTS.schools, this.context.schools, params);
-    this.loadAcademicSessions();
-  }
-
-  canSelectTenant(): boolean {
-    return this.permissions.has('tenants.view');
+  scopeSummary(): string {
+    const user = this.auth.user();
+    if (!user) return 'Account scoped';
+    if (user.isPlatformAdmin) return 'Platform wide';
+    const scopes = [user.tenantId && 'Tenant', user.schoolId && 'School', user.branchId && 'Branch', user.academicSessionId && 'Session']
+      .filter((scope): scope is string => !!scope);
+    return scopes.length ? scopes.join(' · ') : 'Account scoped';
   }
 
   entityIcon(key: string): string {
@@ -320,67 +285,10 @@ export class TopbarComponent implements OnInit {
     return String(row['admissionNumber'] ?? row['employeeNumber'] ?? row['email'] ?? row['code'] ?? row['status'] ?? '');
   }
 
-  private loadBranches(schoolId: string): void {
-    this.loadOptions(API_ENDPOINTS.branches, this.context.branches, { ...this.tenantParams(), schoolId, limit: 100 });
-  }
-
-  private loadAcademicSessions(schoolId = this.context.schoolId()): void {
-    const params = {
-      ...this.tenantParams(),
-      ...(schoolId ? { schoolId } : {}),
-      limit: 100,
-    };
-    this.loadOptions(API_ENDPOINTS.academicSessions, this.context.academicSessions, params);
-  }
-
-  private tenantParams(): Record<string, string | number | boolean> {
-    const tenantId = this.context.tenantId();
-    return tenantId ? { tenantId, limit: 100 } : { limit: 100 };
-  }
-
-  private loadOptions(
-    endpoint: string,
-    target: WritableSignal<{ id: string; name: string }[]>,
-    params: Record<string, string | number | boolean> = { limit: 100 },
-  ): void {
-    this.contextError.set('');
-    this.api.get<unknown>(endpoint, params).pipe(
-      map((response) => {
-        const data = response.data;
-        const rows: unknown[] | undefined = Array.isArray(data)
-          ? data
-          : typeof data === 'object' && data !== null && 'items' in data && Array.isArray(data['items'])
-            ? data['items']
-            : undefined;
-        if (!rows) throw new Error('The service returned context options in an unsupported format.');
-        return rows.map((option) => {
-          if (typeof option !== 'object' || option === null) {
-            throw new Error('The service returned a context option in an unsupported format.');
-          }
-          const row = option as Record<string, unknown>;
-          const id = row['id'];
-          if ((typeof id !== 'string' && typeof id !== 'number') || !String(id)) {
-            throw new Error('The service returned a context option without a valid ID.');
-          }
-          return {
-            id: String(id),
-            name: String(row['name'] ?? row['title'] ?? row['label'] ?? 'Unnamed'),
-          };
-        });
-      }),
-    ).subscribe({
-      next: (options) => target.set(options),
-      error: (error: ApiError) => {
-        target.set([]);
-        this.contextError.set(error.message ?? 'School context options could not be loaded.');
-      },
-    });
-  }
-
   private loadNotifications(): void {
     this.notificationLoading.set(true);
     this.notificationError.set('');
-    this.api.get<unknown>(API_ENDPOINTS.notifications, { page: 1, limit: 8 }).pipe(
+    this.api.get<unknown>(API_ENDPOINTS.notifications, { page: 1, pageSize: 8 }).pipe(
       map((response) => {
         const data = response.data;
         const rows: unknown[] | undefined = Array.isArray(data)

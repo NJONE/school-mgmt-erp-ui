@@ -26,6 +26,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/settings/settings.component').then((m) => m.SettingsComponent),
       },
       {
+        path: 'attendance/capture',
+        canActivate: [permissionGuard],
+        data: { permissions: ['studentAttendance.create'] },
+        loadComponent: () => import('./features/attendance-capture.component').then((m) => m.AttendanceCaptureComponent),
+      },
+      {
         path: 'management/:entity',
         canActivate: [permissionGuard],
         loadComponent: () => import('./features/dynamic-management.component').then((m) => m.DynamicManagementComponent),

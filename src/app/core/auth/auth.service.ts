@@ -1,8 +1,9 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, finalize, tap } from 'rxjs';
+import { Observable, catchError, finalize, map, shareReplay, tap, throwError } from 'rxjs';
 import { AuthTokens, AuthUser, LoginRequest, LoginResponse } from '../models/auth.models';
 import { AuthApiService } from './auth-api.service';
+import { TenantContextService } from '../tenant/tenant-context.service';
 
 const ACCESS_TOKEN_KEY = 'erp.accessToken';
 const REFRESH_TOKEN_KEY = 'erp.refreshToken';
@@ -12,16 +13,26 @@ const USER_KEY = 'erp.user';
 export class AuthService {
   private readonly api = inject(AuthApiService);
   private readonly router = inject(Router);
+  private readonly context = inject(TenantContextService);
   private readonly userSignal = signal<AuthUser | null>(this.readUser());
   private readonly loadingSignal = signal(false);
+  private refreshInFlight: Observable<string> | undefined;
 
   readonly user = this.userSignal.asReadonly();
   readonly loading = this.loadingSignal.asReadonly();
   readonly logoutWarning = signal('');
   readonly isAuthenticated = computed(() => this.userSignal() !== null || !!this.accessToken);
 
+  constructor() {
+    this.context.syncIdentityScope(this.userSignal());
+  }
+
   get accessToken(): string | null {
     return this.storage()?.getItem(ACCESS_TOKEN_KEY) ?? null;
+  }
+
+  get refreshToken(): string | null {
+    return this.storage()?.getItem(REFRESH_TOKEN_KEY) ?? null;
   }
 
   login(request: LoginRequest): Observable<LoginResponse> {
@@ -33,8 +44,27 @@ export class AuthService {
     );
   }
 
+  refreshAccessToken(): Observable<string> {
+    if (this.refreshInFlight) return this.refreshInFlight;
+    const refreshToken = this.refreshToken;
+    if (!refreshToken) return throwError(() => new Error('No refresh token is available.'));
+
+    this.refreshInFlight = this.api.refresh(refreshToken).pipe(
+      tap((session) => this.storeSession(session.user, session.tokens)),
+      map(() => this.accessToken ?? ''),
+      catchError((error: unknown) => {
+        this.clearSession();
+        return throwError(() => error);
+      }),
+      finalize(() => { this.refreshInFlight = undefined; }),
+      shareReplay({ bufferSize: 1, refCount: false }),
+    );
+    return this.refreshInFlight;
+  }
+
   logout(): void {
-    this.api.logout().subscribe({
+    const refreshToken = this.storage()?.getItem(REFRESH_TOKEN_KEY) ?? undefined;
+    this.api.logout(refreshToken).subscribe({
       error: (error: unknown) => {
         const detail = typeof error === 'object' && error !== null && 'message' in error
           ? String(error['message'])
@@ -54,6 +84,7 @@ export class AuthService {
     storage?.removeItem(REFRESH_TOKEN_KEY);
     storage?.removeItem(USER_KEY);
     this.userSignal.set(null);
+    this.context.syncIdentityScope(null);
   }
 
   hasPermission(permission: string): boolean {
@@ -67,6 +98,7 @@ export class AuthService {
     else storage?.removeItem(REFRESH_TOKEN_KEY);
     storage?.setItem(USER_KEY, JSON.stringify(user));
     this.userSignal.set(user);
+    this.context.syncIdentityScope(user);
   }
 
   private readUser(): AuthUser | null {

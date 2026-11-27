@@ -3,15 +3,21 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
-import { combineLatest } from 'rxjs';
+import { combineLatest, map, switchMap } from 'rxjs';
 import { ApiError } from '../core/models/api.models';
+import { AuthService } from '../core/auth/auth.service';
+import { AuthApiService } from '../core/auth/auth-api.service';
+import { CreateUserRequest } from '../core/models/auth.models';
+import { API_ENDPOINTS } from '../core/config/api-endpoints';
 import { EntityMetadataRegistry } from '../core/metadata/entity-registry.service';
 import { DynamicFormEngine } from '../core/metadata/dynamic-form.service';
 import { DynamicTableEngine } from '../core/metadata/dynamic-table.service';
 import { DynamicFilterEngine } from '../core/metadata/dynamic-filter.service';
 import { LookupEngine } from '../core/metadata/lookup.service';
-import { EntityMetadata, FieldMetadata, LookupOption } from '../core/metadata/metadata.models';
+import { EntityMetadata, FieldMetadata, FilterMetadata, LookupOption } from '../core/metadata/metadata.models';
 import { CrudEngine } from '../core/crud/crud-engine.service';
+import { ApiClientService } from '../core/services/api-client.service';
+import { DomainWorkflowService, FeePaymentRequest, NotificationSendRequest, StudentPromotionRequest } from '../core/services/domain-workflow.service';
 import { PermissionService } from '../core/permissions/permission.service';
 import { TenantContextService } from '../core/tenant/tenant-context.service';
 import { ConfirmationDialogComponent } from '../shared/components/confirmation-dialog.component';
@@ -65,14 +71,25 @@ import { FeedbackStateComponent, StatusBadgeComponent } from '../shared/componen
           }
           @for (filter of current.filters ?? []; track filter.key) {
             @if (filter.type === 'select') {
-              <select [(ngModel)]="filterValues[filter.key]" (ngModelChange)="applyFilters()" [attr.aria-label]="filter.label">
+              <select [(ngModel)]="filterValues[filter.key]" (ngModelChange)="applyFilters()" [attr.aria-label]="filter.label" [disabled]="filterLookupLoading()[filter.key]">
                 <option value="">All {{ filter.label }}</option>
+                @if (filterLookupLoading()[filter.key]) { <option disabled>Loading options…</option> }
                 @for (option of filter.options ?? []; track option.value) {
                   <option [value]="option.value">{{ option.label }}</option>
                 }
+                @for (option of filterLookupOptions()[filter.key] ?? []; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+              @if (filterLookupErrors()[filter.key]) { <small class="field-error" role="alert">{{ filterLookupErrors()[filter.key] }}</small> }
+            } @else if (filter.type === 'boolean') {
+              <select [(ngModel)]="filterValues[filter.key]" (ngModelChange)="applyFilters()" [attr.aria-label]="filter.label">
+                <option value="">All {{ filter.label }}</option>
+                <option [ngValue]="true">Yes</option>
+                <option [ngValue]="false">No</option>
               </select>
             } @else {
-              <input [(ngModel)]="filterValues[filter.key]" (ngModelChange)="applyFilters()" [type]="filter.type === 'date' ? 'date' : 'text'" [placeholder]="filter.label" />
+              <input [(ngModel)]="filterValues[filter.key]" (ngModelChange)="applyFilters()" [type]="filter.type === 'date' ? 'date' : filter.type === 'range' ? 'number' : 'text'" [placeholder]="filter.label" />
             }
           }
           @if (current.filters?.length) {
@@ -118,7 +135,7 @@ import { FeedbackStateComponent, StatusBadgeComponent } from '../shared/componen
                         </button>
                       </th>
                     }
-                    @if (canUpdate() || canDelete() || canView()) { <th class="actions-column">Actions</th> }
+                    @if (canUpdate() || canDelete() || canView() || canPromote() || canPublish() || canProcessPayroll()) { <th class="actions-column">Actions</th> }
                   </tr>
                 </thead>
                 <tbody>
@@ -136,10 +153,13 @@ import { FeedbackStateComponent, StatusBadgeComponent } from '../shared/componen
                           }
                         </td>
                       }
-                      @if (canUpdate() || canDelete() || canView()) {
+                      @if (canUpdate() || canDelete() || canView() || canPromote() || canPublish() || canProcessPayroll()) {
                         <td class="row-actions">
                           @if (canView()) { <button type="button" (click)="openDetails(row)">View</button> }
                           @if (canUpdate()) { <button type="button" (click)="openEdit(row)">Edit</button> }
+                          @if (canPromote()) { <button type="button" (click)="openPromotion(row)">Promote</button> }
+                          @if (canPublish()) { <button type="button" (click)="requestWorkflowConfirmation('publish', row)">Publish results</button> }
+                          @if (canProcessPayroll()) { <button type="button" (click)="requestWorkflowConfirmation('process-payroll', row)">Process run</button> }
                           @if (canDelete()) { <button type="button" class="danger-link" (click)="deleteRow(row)">Delete</button> }
                         </td>
                       }
@@ -151,7 +171,7 @@ import { FeedbackStateComponent, StatusBadgeComponent } from '../shared/componen
             <footer class="pagination">
               <div class="pagination-summary"><strong>{{ total() }}</strong> records <span>·</span> Rows per page
                 <select aria-label="Rows per page" [value]="limit()" (change)="changeLimit($event)">
-                  <option [value]="10">10</option><option [value]="25">25</option><option [value]="50">50</option>
+                  <option [value]="10">10</option><option [value]="20">20</option><option [value]="25">25</option><option [value]="50">50</option><option [value]="100">100</option>
                 </select>
               </div>
               <div class="pagination-controls">
@@ -171,10 +191,10 @@ import { FeedbackStateComponent, StatusBadgeComponent } from '../shared/componen
       [open]="confirmationOpen()"
       [title]="confirmationTitle()"
       [message]="confirmationMessage()"
-      confirmLabel="Delete"
-      [danger]="true"
+      [confirmLabel]="confirmationConfirmLabel()"
+      [danger]="confirmationDanger()"
       (cancel)="cancelDelete()"
-      (confirm)="confirmDelete()"
+      (confirm)="confirmAction()"
     />
 
     @if (dialogOpen()) {
@@ -208,7 +228,15 @@ import { FeedbackStateComponent, StatusBadgeComponent } from '../shared/componen
                           @for (option of field.options ?? []; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
                         </select>
                       }
+                      @case ('multiselect') {
+                        <select multiple [formControlName]="field.key" [disabled]="lookupLoading()[field.key]">
+                          @if (lookupLoading()[field.key]) { <option disabled>Loading options…</option> }
+                          @for (option of field.options ?? []; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+                          @for (option of lookupOptions[field.key] ?? []; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+                        </select>
+                      }
                       @case ('boolean') { <input type="checkbox" [formControlName]="field.key" /> }
+                      @case ('time') { <input type="time" [formControlName]="field.key" [placeholder]="field.placeholder ?? ''" /> }
                       @case ('datetime') { <input type="datetime-local" [formControlName]="field.key" [placeholder]="field.placeholder ?? ''" /> }
                       @case ('lookup') {
                         <select [formControlName]="field.key" [disabled]="lookupLoading()[field.key]">
@@ -236,6 +264,10 @@ import { FeedbackStateComponent, StatusBadgeComponent } from '../shared/componen
 })
 export class DynamicManagementComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly api = inject(ApiClientService);
+  private readonly auth = inject(AuthService);
+  private readonly authApi = inject(AuthApiService);
+  private readonly workflows = inject(DomainWorkflowService);
   private readonly registry = inject(EntityMetadataRegistry);
   private readonly crud = inject(CrudEngine);
   readonly formEngine = inject(DynamicFormEngine);
@@ -264,6 +296,8 @@ export class DynamicManagementComponent implements OnInit {
   readonly confirmationOpen = signal(false);
   readonly confirmationTitle = signal('Delete record?');
   readonly confirmationMessage = signal('This action cannot be undone.');
+  readonly confirmationConfirmLabel = signal('Delete');
+  readonly confirmationDanger = signal(true);
   readonly dialogTitle = signal('Add record');
   readonly detailsRow = signal<Record<string, unknown> | undefined>(undefined);
   readonly editingRow = signal<Record<string, unknown> | undefined>(undefined);
@@ -276,9 +310,16 @@ export class DynamicManagementComponent implements OnInit {
   readonly activeFormSection = signal('');
   readonly lookupLoading = signal<Record<string, boolean>>({});
   readonly lookupErrors = signal<Record<string, string>>({});
+  readonly filterLookupOptions = signal<Record<string, LookupOption[]>>({});
+  readonly filterLookupLoading = signal<Record<string, boolean>>({});
+  readonly filterLookupErrors = signal<Record<string, string>>({});
+  readonly workflowMode = signal<'promotion' | undefined>(undefined);
   filterValues: Record<string, unknown> = {};
   private readonly destroyRef = inject(DestroyRef);
   private pendingDeleteRow: Record<string, unknown> | undefined;
+  private pendingWorkflowRow: Record<string, unknown> | undefined;
+  private pendingWorkflowAction: 'publish' | 'process-payroll' | undefined;
+  private promotionStudentRow: Record<string, unknown> | undefined;
   private pendingBulkDelete = false;
   private searchTimeout: ReturnType<typeof setTimeout> | undefined;
   private lastContextRevision = this.context.revision();
@@ -301,8 +342,14 @@ export class DynamicManagementComponent implements OnInit {
 
   ngOnInit(): void {
     combineLatest([this.route.paramMap, this.route.queryParamMap])
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(([params, queryParams]) => {
+      .pipe(
+        switchMap(([params, queryParams]) => this.registry.loadFromBackend(this.api).pipe(
+          map(() => [params, queryParams] as const),
+        )),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: ([params, queryParams]) => {
       const key = params.get('entity') ?? '';
       const metadata = this.registry.get(key);
       this.entity.set(metadata);
@@ -318,12 +365,20 @@ export class DynamicManagementComponent implements OnInit {
         this.visibleColumnKeys.set(this.table.getColumns(metadata.table).map((column) => column.key));
         this.columnMenuOpen.set(false);
         this.setFormFields((metadata.form?.fields ?? metadata.fields).filter((field) => field.inForm !== false));
+        this.loadFilterLookups(metadata.filters ?? []);
         this.filterValues = {};
         this.rows.set([]);
         this.load();
       } else {
         this.rows.set([]);
       }
+        },
+        error: (error: ApiError) => {
+          this.entity.set(undefined);
+          this.rows.set([]);
+          this.loading.set(false);
+          this.error.set(error.message ?? 'Unable to load entity configuration from the service.');
+        },
       });
   }
 
@@ -410,14 +465,25 @@ export class DynamicManagementComponent implements OnInit {
     return !!permission && this.permissions.has(permission);
   }
 
+  canPromote(): boolean {
+    return this.entity()?.apiEntityCode === 'students' && this.permissions.has('students.update');
+  }
+
+  canPublish(): boolean {
+    return this.entity()?.apiEntityCode === 'examinations' && this.permissions.has('results.publish');
+  }
+
+  canProcessPayroll(): boolean {
+    return this.entity()?.apiEntityCode === 'payrollRuns' && this.permissions.has('payrollRuns.update');
+  }
+
   canImport(): boolean {
-    const key = this.entity()?.key;
-    return !!key && this.permissions.has(`${key}.import`);
+    return false;
   }
 
   canExport(): boolean {
-    const key = this.entity()?.key;
-    return !!key && this.permissions.has(`${key}.export`);
+    const permission = this.entity()?.permissions?.export;
+    return !!permission && this.permissions.has(permission);
   }
 
   rowId(row: Record<string, unknown>): string | number {
@@ -476,12 +542,16 @@ export class DynamicManagementComponent implements OnInit {
   openCreate(): void {
     const metadata = this.entity();
     if (!metadata || !this.canCreate()) return;
+    const fields = this.createFormFields(metadata);
+    this.setFormFields(fields);
     this.detailsRow.set(undefined);
     this.editingRow.set(undefined);
+    this.workflowMode.set(undefined);
+    this.promotionStudentRow = undefined;
     this.error.set('');
-    this.form.set(this.formEngine.build(metadata.form?.fields ?? metadata.fields));
+    this.form.set(this.formEngine.build(fields));
     this.selectFirstFormSection();
-    this.loadLookupOptions(metadata.form?.fields ?? metadata.fields);
+    this.loadLookupOptions(fields);
     this.dialogTitle.set(`Create ${metadata.label}`);
     this.dialogOpen.set(true);
   }
@@ -489,20 +559,28 @@ export class DynamicManagementComponent implements OnInit {
   openEdit(row: Record<string, unknown>): void {
     const metadata = this.entity();
     if (!metadata || !this.canUpdate()) return;
+    const fields = (metadata.form?.fields ?? metadata.fields).filter((field) => field.inForm !== false);
+    this.setFormFields(fields);
     this.detailsRow.set(undefined);
     this.editingRow.set(row);
+    this.workflowMode.set(undefined);
+    this.promotionStudentRow = undefined;
     this.error.set('');
-    this.form.set(this.formEngine.build(metadata.form?.fields ?? metadata.fields, row));
+    this.form.set(this.formEngine.build(fields, row));
     this.selectFirstFormSection();
-    this.loadLookupOptions(metadata.form?.fields ?? metadata.fields);
+    this.loadLookupOptions(fields);
     this.dialogTitle.set(`Edit ${metadata.label}`);
     this.dialogOpen.set(true);
   }
 
   openDetails(row: Record<string, unknown>): void {
     if (!this.canView()) return;
+    const fields = (this.entity()?.form?.fields ?? this.entity()?.fields ?? []).filter((field) => field.inForm !== false);
+    this.setFormFields(fields);
     this.detailsRow.set(row);
     this.editingRow.set(undefined);
+    this.workflowMode.set(undefined);
+    this.promotionStudentRow = undefined;
     this.form.set(undefined);
     this.selectFirstFormSection();
     this.dialogTitle.set(`${this.entity()?.label ?? 'Record'} details`);
@@ -515,6 +593,29 @@ export class DynamicManagementComponent implements OnInit {
     this.detailsRow.set(undefined);
     this.editingRow.set(undefined);
     this.form.set(undefined);
+    this.workflowMode.set(undefined);
+    this.promotionStudentRow = undefined;
+    const metadata = this.entity();
+    if (metadata) this.setFormFields((metadata.form?.fields ?? metadata.fields).filter((field) => field.inForm !== false));
+  }
+
+  openPromotion(row: Record<string, unknown>): void {
+    if (!this.canPromote()) return;
+    const fields: FieldMetadata[] = [
+      { key: 'classId', label: 'Target class', type: 'lookup', required: true, inForm: true, section: 'Promotion', lookup: { endpoint: API_ENDPOINTS.classes, labelField: 'name', valueField: 'id' } },
+      { key: 'sectionId', label: 'Target section', type: 'lookup', required: true, inForm: true, section: 'Promotion', lookup: { endpoint: API_ENDPOINTS.sections, labelField: 'name', valueField: 'id' } },
+      { key: 'academicSessionId', label: 'Academic session', type: 'lookup', required: true, inForm: true, section: 'Promotion', lookup: { endpoint: API_ENDPOINTS.academicSessions, labelField: 'name', valueField: 'id' } },
+    ];
+    this.setFormFields(fields);
+    this.workflowMode.set('promotion');
+    this.promotionStudentRow = row;
+    this.detailsRow.set(undefined);
+    this.editingRow.set(undefined);
+    this.error.set('');
+    this.form.set(this.formEngine.build(fields));
+    this.loadLookupOptions(fields);
+    this.dialogTitle.set('Promote student');
+    this.dialogOpen.set(true);
   }
 
   private loadLookupOptions(fields: FieldMetadata[]): void {
@@ -535,10 +636,54 @@ export class DynamicManagementComponent implements OnInit {
     }
   }
 
+  private loadFilterLookups(filters: FilterMetadata[]): void {
+    this.filterLookupOptions.set({});
+    this.filterLookupLoading.set({});
+    this.filterLookupErrors.set({});
+    for (const filter of filters) {
+      if (!filter.lookup) continue;
+      this.filterLookupLoading.update((loading) => ({ ...loading, [filter.key]: true }));
+      this.lookup.search(filter.lookup).subscribe({
+        next: (options) => {
+          this.filterLookupOptions.update((current) => ({ ...current, [filter.key]: options }));
+          this.filterLookupLoading.update((loading) => ({ ...loading, [filter.key]: false }));
+        },
+        error: (error: ApiError) => {
+          this.filterLookupErrors.update((errors) => ({ ...errors, [filter.key]: error.message ?? 'Unable to load filter options.' }));
+          this.filterLookupLoading.update((loading) => ({ ...loading, [filter.key]: false }));
+        },
+      });
+    }
+  }
+
   private setFormFields(fields: FieldMetadata[]): void {
     this.formFields.set(fields);
     this.formSections.set(Array.from(new Set(fields.map((field) => field.section ?? 'General'))));
     this.selectFirstFormSection();
+  }
+
+  private createFormFields(metadata: EntityMetadata): FieldMetadata[] {
+    const fields = (metadata.form?.fields ?? metadata.fields)
+      .filter((field) => field.inForm !== false && !field.hidden);
+    if (metadata.apiEntityCode !== 'users') return fields;
+
+    const accountFields: FieldMetadata[] = [
+      ...fields,
+      {
+        key: 'password', label: 'Initial password', type: 'password', required: true,
+        minLength: 12, maxLength: 128, inForm: true, section: 'Account',
+      },
+    ];
+    if (!this.auth.user()?.isPlatformAdmin) return accountFields;
+
+    const platformScopeFields: FieldMetadata[] = [
+      { key: 'tenantId', label: 'Tenant', type: 'lookup', inForm: true, section: 'Scope', lookup: { endpoint: `${API_ENDPOINTS.entities}/tenants`, labelField: 'name', valueField: 'id' } },
+      { key: 'schoolId', label: 'School', type: 'lookup', inForm: true, section: 'Scope', lookup: { endpoint: `${API_ENDPOINTS.entities}/schools`, labelField: 'name', valueField: 'id' } },
+      { key: 'branchId', label: 'Branch', type: 'lookup', inForm: true, section: 'Scope', lookup: { endpoint: `${API_ENDPOINTS.entities}/branches`, labelField: 'name', valueField: 'id' } },
+      { key: 'academicSessionId', label: 'Academic session', type: 'lookup', inForm: true, section: 'Scope', lookup: { endpoint: `${API_ENDPOINTS.entities}/academicSessions`, labelField: 'name', valueField: 'id' } },
+      { key: 'isPlatformAdmin', label: 'Platform administrator', type: 'boolean', defaultValue: false, inForm: true, section: 'Scope' },
+    ];
+    return [...accountFields, ...platformScopeFields];
   }
 
   private selectFirstFormSection(): void {
@@ -557,10 +702,35 @@ export class DynamicManagementComponent implements OnInit {
       this.showFirstInvalidSection(form);
       return;
     }
-    if (this.editingRow() ? !this.canUpdate() : !this.canCreate()) return;
+    const promoting = this.workflowMode() === 'promotion';
+    if (promoting ? !this.canPromote() : this.editingRow() ? !this.canUpdate() : !this.canCreate()) return;
     const body = form.getRawValue();
     this.saving.set(true);
     this.error.set('');
+    if (promoting) {
+      const studentId = this.promotionStudentRow ? this.rowId(this.promotionStudentRow) : '';
+      if (studentId === '') {
+        this.saving.set(false);
+        this.error.set('The student cannot be promoted because the record has no ID.');
+        return;
+      }
+      const request: StudentPromotionRequest = {
+        studentId: String(studentId),
+        classId: String(body['classId'] ?? ''),
+        sectionId: String(body['sectionId'] ?? ''),
+        academicSessionId: String(body['academicSessionId'] ?? ''),
+      };
+      this.workflows.promoteStudent(request).subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.success.set('Student promoted successfully.');
+          this.closeDialog();
+          this.load();
+        },
+        error: (error: ApiError) => { this.saving.set(false); this.error.set(error.message); },
+      });
+      return;
+    }
     if (this.editingRow()) {
       const row = this.editingRow();
       const id = row ? this.rowId(row) : '';
@@ -582,7 +752,7 @@ export class DynamicManagementComponent implements OnInit {
         },
       });
     } else {
-      this.crud.create(metadata, body).subscribe({
+      this.createRecord(metadata, body).subscribe({
         next: () => {
           this.saving.set(false);
           this.success.set(`${metadata.label} created successfully.`);
@@ -597,12 +767,66 @@ export class DynamicManagementComponent implements OnInit {
     }
   }
 
+  private createRecord(metadata: EntityMetadata, body: Record<string, unknown>) {
+    if (metadata.apiEntityCode === 'users') return this.authApi.createUser(this.toCreateUserRequest(body));
+    if (metadata.apiEntityCode === 'feePayments') {
+      const request: FeePaymentRequest = {
+        studentId: String(body['studentId'] ?? ''),
+        amount: Number(body['amount']),
+        paymentDate: this.toIsoDateTime(body['paymentDate']),
+        paymentMethod: String(body['paymentMethod'] ?? '') as FeePaymentRequest['paymentMethod'],
+        ...(typeof body['referenceNumber'] === 'string' ? { referenceNumber: body['referenceNumber'] } : {}),
+      };
+      return this.workflows.recordFeePayment(request);
+    }
+    if (metadata.apiEntityCode === 'notifications') {
+      const request: NotificationSendRequest = {
+        recipientId: String(body['recipientId'] ?? ''),
+        channel: String(body['channel'] ?? '') as NotificationSendRequest['channel'],
+        ...(typeof body['subject'] === 'string' ? { subject: body['subject'] } : {}),
+        body: String(body['body'] ?? ''),
+      };
+      return this.workflows.sendNotification(request);
+    }
+    if (metadata.apiEntityCode === 'documentGenerationJobs') {
+      return this.workflows.generateDocument({
+        templateId: String(body['templateId'] ?? ''),
+        documentType: String(body['documentType'] ?? ''),
+      });
+    }
+    return this.crud.create(metadata, body);
+  }
+
+  private toCreateUserRequest(body: Record<string, unknown>): CreateUserRequest {
+    const request: CreateUserRequest = {
+      email: String(body['email'] ?? ''),
+      displayName: String(body['displayName'] ?? ''),
+      password: String(body['password'] ?? ''),
+    };
+    if (Array.isArray(body['roleKeys'])) request.roleKeys = body['roleKeys'].filter((value): value is string => typeof value === 'string');
+    if (this.auth.user()?.isPlatformAdmin) {
+      for (const key of ['tenantId', 'schoolId', 'branchId', 'academicSessionId'] as const) {
+        if (typeof body[key] === 'string' && body[key]) request[key] = body[key] as string;
+      }
+      if (typeof body['isPlatformAdmin'] === 'boolean') request.isPlatformAdmin = body['isPlatformAdmin'];
+    }
+    return request;
+  }
+
+  private toIsoDateTime(value: unknown): string {
+    const date = new Date(String(value ?? ''));
+    return Number.isNaN(date.getTime()) ? String(value ?? '') : date.toISOString();
+  }
+
   deleteRow(row: Record<string, unknown>): void {
     if (!this.canDelete()) return;
     this.pendingDeleteRow = row;
     this.pendingBulkDelete = false;
+    this.pendingWorkflowAction = undefined;
+    this.confirmationConfirmLabel.set('Delete');
+    this.confirmationDanger.set(true);
     this.confirmationTitle.set(`Delete ${this.entity()?.label.toLowerCase() ?? 'record'}?`);
-    this.confirmationMessage.set('This record will be permanently removed if the service allows deletion.');
+    this.confirmationMessage.set('This record will be soft-deleted by the service.');
     this.confirmationOpen.set(true);
   }
 
@@ -610,6 +834,9 @@ export class DynamicManagementComponent implements OnInit {
     if (!this.canDelete() || !this.selectedIds().length) return;
     this.pendingDeleteRow = undefined;
     this.pendingBulkDelete = true;
+    this.pendingWorkflowAction = undefined;
+    this.confirmationConfirmLabel.set('Delete');
+    this.confirmationDanger.set(true);
     this.confirmationTitle.set(`Delete ${this.selectedIds().length} records?`);
     this.confirmationMessage.set('This action cannot be undone.');
     this.confirmationOpen.set(true);
@@ -619,6 +846,58 @@ export class DynamicManagementComponent implements OnInit {
     this.confirmationOpen.set(false);
     this.pendingDeleteRow = undefined;
     this.pendingBulkDelete = false;
+    this.pendingWorkflowAction = undefined;
+    this.pendingWorkflowRow = undefined;
+  }
+
+  requestWorkflowConfirmation(action: 'publish' | 'process-payroll', row: Record<string, unknown>): void {
+    if (action === 'publish' && !this.canPublish()) return;
+    if (action === 'process-payroll' && !this.canProcessPayroll()) return;
+    this.pendingDeleteRow = undefined;
+    this.pendingBulkDelete = false;
+    this.pendingWorkflowAction = action;
+    this.pendingWorkflowRow = row;
+    this.confirmationDanger.set(false);
+    this.confirmationConfirmLabel.set(action === 'publish' ? 'Publish results' : 'Process run');
+    this.confirmationTitle.set(action === 'publish' ? 'Publish examination results?' : 'Process payroll run?');
+    this.confirmationMessage.set(action === 'publish'
+      ? 'The service will publish this examination and its results.'
+      : 'The service will process this payroll run.');
+    this.confirmationOpen.set(true);
+  }
+
+  confirmAction(): void {
+    if (this.pendingWorkflowAction) {
+      this.confirmWorkflowAction();
+      return;
+    }
+    this.confirmDelete();
+  }
+
+  private confirmWorkflowAction(): void {
+    const action = this.pendingWorkflowAction;
+    const row = this.pendingWorkflowRow;
+    this.confirmationOpen.set(false);
+    this.pendingWorkflowAction = undefined;
+    this.pendingWorkflowRow = undefined;
+    if (!action || !row) return;
+    const id = this.rowId(row);
+    if (id === '') {
+      this.error.set('The selected record cannot be processed because it has no ID.');
+      return;
+    }
+    const operation = action === 'publish'
+      ? this.workflows.publishExamination(String(id))
+      : this.workflows.processPayrollRun(String(id));
+    this.saving.set(true);
+    operation.subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.success.set(action === 'publish' ? 'Examination results published.' : 'Payroll run processed.');
+        this.load();
+      },
+      error: (error: ApiError) => { this.saving.set(false); this.error.set(error.message); },
+    });
   }
 
   confirmDelete(): void {

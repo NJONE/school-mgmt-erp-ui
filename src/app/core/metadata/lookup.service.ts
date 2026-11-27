@@ -3,20 +3,28 @@ import { Observable, map, of } from 'rxjs';
 import { ApiEnvelope, PaginatedData } from '../models/api.models';
 import { ApiClientService } from '../services/api-client.service';
 import { TenantContextService } from '../tenant/tenant-context.service';
+import { AuthService } from '../auth/auth.service';
 import { LookupMetadata, LookupOption } from './metadata.models';
 
 @Injectable({ providedIn: 'root' })
 export class LookupEngine {
   private readonly api = inject(ApiClientService);
   private readonly context = inject(TenantContextService);
+  private readonly auth = inject(AuthService);
   private readonly cache = new Map<string, LookupOption[]>();
 
   search(metadata: LookupMetadata, term = ''): Observable<LookupOption[]> {
+    const lookupFilters = metadata.params ?? {};
+    const fields = Array.from(new Set([metadata.valueField ?? 'id', metadata.labelField ?? 'name']));
     const params: Record<string, string | number | boolean> = {
-      ...(metadata.params ?? {}),
-      ...(term ? { [metadata.searchParam ?? 'search']: term } : {}),
+      page: 1,
+      pageSize: 100,
+      fields: fields.join(','),
+      ...(term ? { search: term } : {}),
+      ...(Object.keys(lookupFilters).length ? { filters: JSON.stringify(lookupFilters) } : {}),
     };
-    const cacheKey = `${metadata.endpoint}:${this.context.tenantId() ?? ''}:${this.context.schoolId() ?? ''}:${this.context.branchId() ?? ''}:${this.context.academicSessionId() ?? ''}:${JSON.stringify(params)}`;
+    const user = this.auth.user();
+    const cacheKey = `${metadata.endpoint}:${user?.id ?? ''}:${user?.tenantId ?? ''}:${user?.schoolId ?? ''}:${user?.branchId ?? ''}:${user?.academicSessionId ?? ''}:${JSON.stringify(params)}`;
     const cached = this.cache.get(cacheKey);
     if (cached) return of(cached);
 

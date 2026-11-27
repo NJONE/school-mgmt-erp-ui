@@ -15,7 +15,7 @@ export class DynamicFormEngine {
       if (field.type === 'email') validators.push(Validators.email);
       if (field.type === 'url') validators.push(Validators.pattern(/^https?:\/\/.+/i));
       if (field.type === 'number') validators.push(Validators.min(field.min ?? 0), Validators.max(field.max ?? Number.MAX_SAFE_INTEGER));
-      const controlValue = value[field.key] ?? field.defaultValue ?? '';
+      const controlValue = value[field.key] ?? field.defaultValue ?? (field.type === 'multiselect' ? [] : '');
       controls[field.key] = field.readonly
         ? new FormControl({ value: controlValue, disabled: true })
         : new FormControl(controlValue, validators);

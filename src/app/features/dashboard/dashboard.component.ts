@@ -9,6 +9,7 @@ import { PermissionService } from '../../core/permissions/permission.service';
 import { ApiError } from '../../core/models/api.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { TenantContextService } from '../../core/tenant/tenant-context.service';
+import { ApiClientService } from '../../core/services/api-client.service';
 import { FeedbackStateComponent } from '../../shared/components/feedback-state.component';
 
 interface StatCard {
@@ -123,6 +124,7 @@ export class DashboardComponent implements OnInit {
   private readonly permissions = inject(PermissionService);
   private readonly auth = inject(AuthService);
   private readonly context = inject(TenantContextService);
+  private readonly api = inject(ApiClientService);
   private readonly failures = new Set<string>();
   private lastContextRevision = this.context.revision();
 
@@ -144,7 +146,15 @@ export class DashboardComponent implements OnInit {
   ]);
 
   ngOnInit(): void {
-    this.refresh();
+    this.loading.set(true);
+    this.registry.loadFromBackend(this.api).subscribe({
+      next: () => this.refresh(),
+      error: (error: ApiError) => {
+        this.error.set(error.message ?? 'Dashboard metadata could not be loaded.');
+        this.loading.set(false);
+        this.hasLoaded.set(true);
+      },
+    });
   }
 
   todayLabel(): string {

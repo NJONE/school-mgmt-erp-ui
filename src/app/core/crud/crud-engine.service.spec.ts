@@ -9,7 +9,7 @@ describe('CrudEngine', () => {
     key: 'students',
     label: 'Student',
     pluralLabel: 'Students',
-    endpoint: '/students',
+    endpoint: '/entities/students',
     fields: [],
   };
 
@@ -17,10 +17,8 @@ describe('CrudEngine', () => {
     const api = {
       get: vi.fn(() => of({
         success: true,
-        data: {
-          items: [{ id: 'student-1' }],
-          pagination: { page: 1, limit: 10, total: 14, totalPages: 2 },
-        },
+        data: [{ id: 'student-1' }],
+        meta: { page: 1, pageSize: 10, totalRecords: 14, totalPages: 2 },
       })),
     };
     TestBed.configureTestingModule({
@@ -33,7 +31,11 @@ describe('CrudEngine', () => {
       result = page;
     });
 
-    expect(api.get).toHaveBeenCalledWith('/students', { page: 1, limit: 10, date: '2026-11-26' });
+    expect(api.get).toHaveBeenCalledWith('/entities/students', {
+      page: 1,
+      pageSize: 10,
+      filters: '{"date":"2026-11-26"}',
+    });
     expect(result).toEqual({
       items: [{ id: 'student-1' }],
       pagination: { page: 1, limit: 10, total: 14, totalPages: 2 },
@@ -53,5 +55,44 @@ describe('CrudEngine', () => {
     });
 
     expect(errorMessage).toBe('The service returned a list response in an unsupported format.');
+  });
+
+  it('uses the service query vocabulary and excludes sensitive fields from list projections', () => {
+    const api = {
+      get: vi.fn(() => of({
+        success: true,
+        data: [{ id: 'student-1', admissionDate: '2026-01-01' }],
+        meta: { page: 2, pageSize: 25, totalRecords: 26, totalPages: 2 },
+      })),
+    };
+    const scopedEntity: EntityMetadata = {
+      ...entity,
+      fields: [
+        { key: 'id', label: 'ID' },
+        { key: 'admissionDate', label: 'Admission date' },
+        { key: 'status', label: 'Status' },
+        { key: 'medicalConditions', label: 'Medical conditions', sensitive: true },
+      ],
+    };
+    TestBed.configureTestingModule({
+      providers: [CrudEngine, { provide: ApiClientService, useValue: api }],
+    });
+
+    TestBed.inject(CrudEngine).list(scopedEntity, {
+      page: 2,
+      limit: 25,
+      sortBy: 'admissionDate',
+      sortDirection: 'desc',
+      filters: { status: 'active' },
+    }).subscribe();
+
+    expect(api.get).toHaveBeenCalledWith('/entities/students', {
+      page: 2,
+      pageSize: 25,
+      sortBy: 'admissionDate',
+      sortOrder: 'desc',
+      filters: '{"status":"active"}',
+      fields: 'id,admissionDate,status',
+    });
   });
 });

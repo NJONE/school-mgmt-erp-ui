@@ -3,6 +3,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { filter } from 'rxjs';
 import { PermissionService } from '../../core/permissions/permission.service';
+import { EntityMetadataRegistry } from '../../core/metadata/entity-registry.service';
+import { ApiClientService } from '../../core/services/api-client.service';
+import { AuthService } from '../../core/auth/auth.service';
 
 interface NavLink {
   label: string;
@@ -92,6 +95,9 @@ export class SidebarComponent implements OnInit {
   readonly collapsed = input(false);
   readonly closeMobile = output<void>();
   private readonly permissions = inject(PermissionService);
+  private readonly registry = inject(EntityMetadataRegistry);
+  private readonly api = inject(ApiClientService);
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   readonly expandedGroups = signal<Set<string>>(new Set());
@@ -134,6 +140,7 @@ export class SidebarComponent implements OnInit {
       icon: '✓',
       children: [
         { label: 'Student attendance', icon: '✓', route: '/management/attendance', permission: 'attendance.view' },
+        { label: 'Capture attendance', icon: '+', route: '/attendance/capture', permission: 'studentAttendance.create' },
       ],
     },
     {
@@ -196,10 +203,47 @@ export class SidebarComponent implements OnInit {
     this.router.events
       .pipe(filter((event) => event instanceof NavigationEnd), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.expandActiveGroup());
+    this.registry.loadFromBackend(this.api)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: () => this.expandActiveGroup(), error: () => this.expandActiveGroup() });
     this.expandActiveGroup();
   }
 
   visibleGroups(): NavGroup[] {
+    if (this.registry.hasBackendCatalog()) {
+      const byModule = new Map<string, NavLink[]>();
+      for (const entity of this.registry.all()) {
+        const permission = entity.permissions?.list;
+        if (!permission || !this.permissions.has(permission)) continue;
+        if (['platform', 'subscriptions', 'tenants'].includes(entity.module ?? '') && !this.auth.user()?.isPlatformAdmin) continue;
+        const module = entity.module ?? 'management';
+        const links = byModule.get(module) ?? [];
+        links.push({
+          label: entity.pluralLabel,
+          icon: moduleIcon(module),
+          route: `/management/${entity.key}`,
+          permission,
+        });
+        byModule.set(module, links);
+      }
+      if (this.permissions.has('studentAttendance.create')) {
+        const attendanceLinks = byModule.get('attendance') ?? [];
+        attendanceLinks.push({
+          label: 'Capture attendance',
+          icon: '+',
+          route: '/attendance/capture',
+          permission: 'studentAttendance.create',
+        });
+        byModule.set('attendance', attendanceLinks);
+      }
+      return Array.from(byModule.entries())
+        .map(([module, children]) => ({
+          label: moduleLabel(module),
+          icon: moduleIcon(module),
+          children: children.sort((left, right) => left.label.localeCompare(right.label)),
+        }))
+        .sort((left, right) => left.label.localeCompare(right.label));
+    }
     return this.groups
       .map((group) => ({
         ...group,
@@ -227,4 +271,20 @@ export class SidebarComponent implements OnInit {
     );
     if (activeGroup) this.expandedGroups.update((groups) => new Set([...groups, activeGroup.label]));
   }
+}
+
+function moduleLabel(module: string): string {
+  return module.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function moduleIcon(module: string): string {
+  const icons: Record<string, string> = {
+    academics: 'A', attendance: '✓', examinations: 'E', fees: '$', finance: 'F',
+    payroll: 'P', leave: 'L', library: '▤', transport: 'T', inventory: 'I',
+    assets: 'A', communications: '◉', documents: 'D', reports: '≡',
+    subscriptions: 'S', tenants: 'T', platform: '⚙', security: '◈', schools: '⌂',
+    students: '◎', parents: '♙', staff: '♧', system: '⚙',
+  };
+  return icons[module] ?? '•';
 }

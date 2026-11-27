@@ -42,7 +42,7 @@ interface PasswordForm {
         <div class="card-icon" aria-hidden="true">⌂</div>
         <div class="card-copy">
           <h2>Current workspace</h2>
-          <p>Context is sent with requests when supported by the service.</p>
+          <p>Your data scope is assigned to your authenticated account and enforced by the service.</p>
         </div>
         <dl>
           <div><dt>School</dt><dd>{{ contextName(context.schools(), context.schoolId()) }}</dd></div>

@@ -6,6 +6,8 @@ import { AuthService } from './auth.service';
 import { LoginResponse } from '../models/auth.models';
 
 describe('AuthService', () => {
+  let logoutSpy: ReturnType<typeof vi.fn>;
+  let refreshSpy: ReturnType<typeof vi.fn>;
   const response: LoginResponse = {
     success: true,
     data: {
@@ -14,7 +16,7 @@ describe('AuthService', () => {
         name: 'Taylor Reed',
         email: 'taylor@example.test',
         roles: ['school_admin'],
-        permissions: ['students.view'],
+        permissions: ['students.read'],
       },
       tokens: { accessToken: 'access-token', refreshToken: 'refresh-token' },
     },
@@ -22,6 +24,11 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     localStorage.clear();
+    logoutSpy = vi.fn(() => of(undefined));
+    refreshSpy = vi.fn(() => of({
+      user: response.data.user,
+      tokens: { accessToken: 'rotated-access-token', refreshToken: 'rotated-refresh-token' },
+    }));
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -29,7 +36,8 @@ describe('AuthService', () => {
           provide: AuthApiService,
           useValue: {
             login: vi.fn(() => of(response)),
-            logout: vi.fn(() => of(undefined)),
+            logout: logoutSpy,
+            refresh: refreshSpy,
           },
         },
       ],
@@ -59,6 +67,20 @@ describe('AuthService', () => {
     expect(auth.user()).toBeNull();
     expect(auth.accessToken).toBeNull();
     expect(localStorage.getItem('erp.refreshToken')).toBeNull();
+    expect(logoutSpy).toHaveBeenCalledWith('refresh-token');
     expect(navigate).toHaveBeenCalledWith(['/login']);
+  });
+
+  it('stores rotated access and refresh tokens after a successful refresh', () => {
+    const auth = TestBed.inject(AuthService);
+    auth.storeSession(response.data.user, response.data.tokens);
+    let accessToken = '';
+
+    auth.refreshAccessToken().subscribe((token) => { accessToken = token; });
+
+    expect(refreshSpy).toHaveBeenCalledWith('refresh-token');
+    expect(accessToken).toBe('rotated-access-token');
+    expect(auth.accessToken).toBe('rotated-access-token');
+    expect(localStorage.getItem('erp.refreshToken')).toBe('rotated-refresh-token');
   });
 });

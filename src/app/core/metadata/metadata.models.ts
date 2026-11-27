@@ -8,9 +8,11 @@ export type FieldType =
   | 'select'
   | 'boolean'
   | 'date'
+  | 'time'
   | 'datetime'
   | 'url'
-  | 'lookup';
+  | 'lookup'
+  | 'multiselect';
 
 export interface FieldOption {
   label: string;
@@ -32,6 +34,8 @@ export interface FieldMetadata {
   required?: boolean;
   readonly?: boolean;
   hidden?: boolean;
+  sensitive?: boolean;
+  searchable?: boolean;
   sortable?: boolean;
   filterable?: boolean;
   inTable?: boolean;
@@ -91,8 +95,11 @@ export interface RelationshipMetadata {
 
 export interface EntityMetadata {
   key: string;
+  apiEntityCode?: string;
   label: string;
   pluralLabel: string;
+  description?: string;
+  module?: string;
   endpoint: string;
   idKey?: string;
   fields: FieldMetadata[];
@@ -105,6 +112,97 @@ export interface EntityMetadata {
     create?: string;
     update?: string;
     delete?: string;
+    import?: string;
+    export?: string;
+    approve?: string;
+    publish?: string;
+  };
+  features?: {
+    create: boolean;
+    read: boolean;
+    update: boolean;
+    delete: boolean;
+    import?: boolean;
+    export?: boolean;
+  };
+}
+
+export interface BackendEntityMetadata {
+  entityCode: string;
+  title: string;
+  pluralTitle: string;
+  description: string;
+  module: string;
+  apiEndpoint: string;
+  primaryKey: string;
+  fields: BackendFieldMetadata[];
+  permissions: Array<{ action: string; permission: string }>;
+  formLayout: {
+    tabs: Array<{
+      title: string;
+      sections: Array<{
+        title: string;
+        columns?: number;
+        fields: Array<{ field: string; readonly?: boolean }>;
+      }>;
+    }>;
+  };
+  tableLayout: {
+    columns: Array<{ field: string; label?: string; width?: number }>;
+    pageSize?: number;
+  };
+  filterLayout: {
+    fields: Array<{ field: string; type?: string; label?: string }>;
+  };
+  features: {
+    create: boolean;
+    read: boolean;
+    update: boolean;
+    delete: boolean;
+    import?: boolean;
+    export?: boolean;
+  };
+  export?: { enabled: boolean; formats?: string[] };
+  import?: { enabled: boolean; templateFields?: string[] };
+  displayField: string;
+  searchFields: string[];
+  defaultPageSize: number;
+}
+
+export interface BackendFieldMetadata {
+  key: string;
+  label: string;
+  type: string;
+  required?: boolean;
+  readonly?: boolean;
+  disabled?: boolean;
+  hidden?: boolean;
+  visibleInForm?: boolean;
+  visibleInTable?: boolean;
+  searchable?: boolean;
+  sortable?: boolean;
+  filterable?: boolean;
+  sensitive?: boolean;
+  width?: number;
+  defaultValue?: unknown;
+  placeholder?: string;
+  helpText?: string;
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  pattern?: string;
+  options?: FieldOption[];
+  lookup?: {
+    entity: string;
+    valueField: string;
+    labelField: string;
+    filters?: Record<string, string | number | boolean>;
+  };
+  relation?: {
+    entity: string;
+    displayField?: string;
+    foreignKey?: string;
   };
 }
 
